@@ -1,0 +1,5 @@
+datasets/
+.env
+.venv/
+Angles Over Time.png
+cycling_summary.png
