@@ -1,0 +1,15 @@
+1. --- Bike Fit Recommendations ---
+2. Your Knee Angle (Hip-Knee-Ankle) at Bottom of Stroke: 136.44
+3. • Saddle might be TOO LOW. Raise saddle height. (Optimal: 140-150°)
+4. Your Knee Angle (Hip-Knee-Ankle) at Top of Stroke: 66.16
+5. • Knee extension (top) too bent. Raise saddle or adjust cleat. (Optimal: 70-80°)
+6. Your Torso Angle (Shoulder-Hip-Horizontal) AVG: 40.87
+7. • Torso angle: Within optimal range. (40-50°)
+8. Your Elbow Angle (Shoulder-Elbow-Wrist) AVG: 165.98
+9. • Elbow angle: Within optimal range. (150-170°)
+10. Hip angle analysis not applicable for current mode.
+11. 
+--- General Advice ---
+12. • These are general recommendations. Individual comfort and flexibility are key.
+13. • Consult a professional bike fitter for personalized adjustments.
+14. • Make small adjustments and test them on the bike.

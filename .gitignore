@@ -3,3 +3,5 @@ datasets/
 .venv/
 Angles Over Time.png
 cycling_summary.png
+__pycache__/
+*.png

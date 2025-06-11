@@ -6,16 +6,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import ListedColormap
 from src.angles_functions import calculate_angle
-from src.optimal_angles import OptimalAngles
+from src.optimal_angles import ANGLE_SPECS
 from dataclasses import asdict
 
+
 # Maps display names to OptimalAngles attribute names
-angle_label_to_attr = {
-    "Knee Angle (Hip-Knee-Ankle)": "knee_extension_bottom",
-    "Torso Angle (Shoulder-Hip-Horizontal)": "torso_to_horizontal",
-    "Elbow Angle (Shoulder-Elbow-Wrist)": "elbow_angle",
-    "Shoulder Angle (Hip-Shoulder-Elbow)": "shoulder_angle",
-    "Knee Angle Top Position": "knee_extension_top",
+angle_label_to_attrs = {
+    "Knee Angle (Hip-Knee-Ankle)": ["knee_extension_bottom", "knee_extension_top"],
+    # "Knee Angle (Hip-Knee-Ankle)": "knee_extension_bottom",
+    "Torso Angle (Shoulder-Hip-Horizontal)": ["torso_to_horizontal"],
+    "Elbow Angle (Shoulder-Elbow-Wrist)": ["elbow_angle"],
+    "Shoulder Angle (Hip-Shoulder-Elbow)": ["shoulder_angle"],
+    "Hip Angle (Shoulder-Hip-Knee)": ["hip_angle"],
+    # "Knee Angle Top Position": "knee_extension_top",
 }
 
 
@@ -130,12 +133,14 @@ def add_text_to_image(image, text: str, pos: int, video_height: int, font_scale:
 
 def plot_angles_over_time(
     angles_data: dict[str, list[float]],
-    title_prefix: str,
-    separate_figures: bool = False,
+    title: str,
     save: bool = True,
     # optimal_ranges: dict[str, tuple[float, float]] | None = None,
-    knee_peaks=None,
-    max_knee_angles=None,
+    knee_peaks_high=None, max_knee_angles=None,
+    knee_peaks_low=None, min_knee_angles=None,
+    hip_peaks_low=None, min_hip_angles=None,
+    # optimal_angles: OptimalAngles = OptimalAngles(),
+    mode: str = "hood",
 ):
     """
     Plots angle values over time. Can plot all angles in subplots in one figure
@@ -150,119 +155,90 @@ def plot_angles_over_time(
         optimal_ranges: Optional dict mapping angle names to (min, max) optimal range to highlight on plots.
     """
     if not angles_data:
-        print(f"No angle data provided for {title_prefix} to plot.")
+        print(f"No angle data provided for {title} to plot.")
         return
 
     num_angles = len(angles_data)
     if num_angles == 0:
-        print(f"No angle data provided for {title_prefix} to plot.")
+        print(f"No angle data provided for {title} to plot.")
         return
 
-    optimal_angles = OptimalAngles()
-    angles_dict = asdict(optimal_angles)
+    # optimal_angles = OptimalAngles()
+    # angles_dict = asdict(optimal_angles)
 
-    if separate_figures:
-        # Dynamically determine rows and columns for subplots
-        rows = int(np.ceil(num_angles / 2)) if num_angles > 0 else 1
-        cols = 2 if num_angles > 1 else 1
+    plt.figure(figsize=(15, 6))
 
-        fig, axes = plt.subplots(rows, cols, figsize=(15, 5 * rows))
-        # Ensure axes is always iterable, even for a single subplot
-        axes = axes.flatten() if num_angles > 1 else [axes]
+    # Corrected way to get a discrete colormap:
+    # Get the 'tab10' colormap object
+    cmap = plt.colormaps.get_cmap('tab10')
+    # Create a ListedColormap with the desired number of colors from the 'tab10' colormap
+    # This ensures we have distinct colors for each line up to num_angles
+    # Use the first num_angles colors
+    colors = ListedColormap(cmap.colors[:num_angles])
 
-        for i, (angle_name, angles) in enumerate(angles_data.items()):
-            if not angles:
-                print(f"No data for {angle_name}. Skipping plot.")
-                continue
+    # Track if knee angle peaks have been added to avoid duplicate legends
+    knee_peaks_added = False
+    knee_valleys_added = False
+    hip_valleys_added = False
 
-            ax = axes[i]
-            ax.plot(angles)
-            ax.set_title(f"{angle_name}")
-            ax.set_xlabel("Frame Number")
-            ax.set_ylabel("Angle (°)")
-            ax.grid(True)
+    for i, (angle_label, angles) in enumerate(angles_data.items()):
+        if angles:
+            line_color = colors(i)
+            # Plot the angle series
+            plt.plot(angles, label=angle_label, color=line_color)
 
-            # Draw optimal range if available
-            if angles_dict and angle_name in angles_dict:
-                min_val, max_val = angles_dict[angle_name]
-                ax.axhspan(min_val, max_val, color='green',
-                           alpha=0.2, label='Optimal Range')
-                ax.legend()
-
-            # Add peaks specifically for "Knee Angle (Hip-Knee-Ankle)"
-            if angle_name == "Knee Angle (Hip-Knee-Ankle)":
-                if knee_peaks is not None and max_knee_angles is not None:
-                    # knee_angles = np.array(angles)
-                    # peaks, _ = find_peaks(knee_angles, distance=peak_detection_distance)
-                    # Plot peaks as 'x' markers
-                    ax.plot(knee_peaks, max_knee_angles, "x",
-                            color='red', markersize=8, label='Peaks')
-                    ax.legend()
-
-        # Remove any unused subplots
-        for j in range(i + 1, len(axes)):
-            fig.delaxes(axes[j])
-
-        fig.suptitle(f"{title_prefix} Angles Over Time", fontsize=16)
-        # Adjust layout to prevent title overlap
-        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-        if save:
-            plt.savefig(f'{title_prefix}.png')
-        plt.show()
-    else:  # Plot all angles in one figure
-        plt.figure(figsize=(15, 6))
-
-        # Corrected way to get a discrete colormap:
-        # Get the 'tab10' colormap object
-        cmap = plt.colormaps.get_cmap('tab10')
-        # Create a ListedColormap with the desired number of colors from the 'tab10' colormap
-        # This ensures we have distinct colors for each line up to num_angles
-        # Use the first num_angles colors
-        colors = ListedColormap(cmap.colors[:num_angles])
-
-        # Track if knee angle peaks have been added to avoid duplicate legends
-        knee_peaks_added = False
-
-        for i, (angle_name, angles) in enumerate(angles_data.items()):
-            if angles:
-                line_color = colors(i)
-                # Plot the angle series
-                plt.plot(angles, label=angle_name, color=line_color)
-
-                # TODO: MERGE WITH THE LEGEND ABOVE
-                # Add optimal range highlight
-                attr_name = angle_label_to_attr.get(angle_name)
-                if attr_name and attr_name in angles_dict:
-                    min_val, max_val = angles_dict[attr_name]
+            spec = next((s for s in ANGLE_SPECS if s.label ==
+                        angle_label and mode in s.modes), None)
+            if spec:
+                ranges = spec.optimal_ranges.get(mode, [])
+                for (min_val, max_val) in ranges:
                     plt.axhspan(min_val, max_val, color=line_color, alpha=0.2)
-                # if angles_dict and angle_name in angles_dict:
-                #     min_val, max_val = angles_dict[angle_name]
-                #     # Use the same color as the line for the optimal range highlight
-                #     plt.axhspan(min_val, max_val, color=line_color, alpha=0.2)
-                else:
-                    print(
-                        f"No optimal range for {angle_name}. Skipping highlight.")
+            else:
+                print(
+                    f"No optimal ranges found for {angle_label} in the provided optimal angles. Maybe its normal (eg. no Torso Angle for Aeros).")
 
-                # Add peaks for "Knee Angle (Hip-Knee-Ankle)"
-                if angle_name == "Knee Angle (Hip-Knee-Ankle)":
-                    if knee_peaks is not None and max_knee_angles is not None:
-                        plt.plot(knee_peaks, max_knee_angles, "x", color='red', markersize=8,
-                                 label='Knee Angle Peaks' if not knee_peaks_added else "_nolegend_")
-                        knee_peaks_added = True  # Mark that peaks have been added
-                    # knee_angles = np.array(angles)
-                    # peaks, _ = find_peaks(knee_angles, distance=peak_detection_distance)
-                    # # Plot peaks as 'x' markers. Add label only once.
-                    # plt.plot(peaks, knee_angles[peaks], "x", color='red', markersize=8, label='Knee Angle Peaks' if not knee_peaks_added else "_nolegend_")
-                    # knee_peaks_added = True # Mark that peaks have been added
+            # Add optimal range highlight
+            # attr_names = angle_label_to_attrs.get(angle_name, [])
+            # found = False
+            # for attr_name in attr_names:
+            #     if attr_name in angles_dict:
+            #         min_val, max_val = angles_dict[attr_name]
+            #         plt.axhspan(min_val, max_val,
+            #                     color=line_color, alpha=0.2)
+            #         found = True
+            #         print(
+            #             f"Highlighting optimal range for {angle_name}: {min_val}° to {max_val}°")
+            # if not found:
+            #     print(
+            #         f"No optimal range found for {angle_name} in the provided optimal angles. Maybe its normal (eg. no Torso Angle for Aeros).")
+            # else:
+            #     print(
+            #         f"No optimal range for {angle_name}. Skipping highlight.")
 
-        plt.title(title_prefix)
-        plt.xlabel("Frame Number")
-        plt.ylabel("Angle (degrees)")
-        plt.grid(True)
-        plt.legend()  # Display legend for all lines and the peak marker
-        if save:
-            plt.savefig(f'{title_prefix}.png')
-        plt.show()
+            # Add peaks for "Knee Angle (Hip-Knee-Ankle)"
+            if angle_label == "Knee Angle (Hip-Knee-Ankle)":
+                if knee_peaks_high is not None and max_knee_angles is not None:
+                    plt.plot(knee_peaks_high, max_knee_angles, "x", color='red', markersize=8,
+                             label='Knee Angle Peaks' if not knee_peaks_added else "_nolegend_")
+                    knee_peaks_added = True  # Mark that peaks have been added
+                if knee_peaks_low is not None and min_knee_angles is not None:
+                    plt.plot(knee_peaks_low, min_knee_angles, "x", color='blue', markersize=8,
+                             label='Knee Angle Valleys' if not knee_valleys_added else "_nolegend_")
+                    knee_valleys_added = True  # Mark that valleys have been added
+            if angle_label == "Hip Angle (Shoulder-Hip-Knee)":
+                if hip_peaks_low is not None and min_hip_angles is not None:
+                    plt.plot(hip_peaks_low, min_hip_angles, "x", color='green', markersize=8,
+                             label='Hip Angle Valleys' if not hip_valleys_added else "_nolegend_")
+                    hip_valleys_added = True
+
+    plt.title(title)
+    plt.xlabel("Frame Number")
+    plt.ylabel("Angle (degrees)")
+    plt.grid(True)
+    plt.legend()  # Display legend for all lines and the peak marker
+    if save:
+        plt.savefig(f'{title}.png')
+    plt.show()
 
 
 def draw_angle_on_image_precise(image, p1: Point, p_vertex: Point, p2: Point, angle_value: float, color=(0, 255, 255), line_thickness=2, arc_radius=50, font_scale=0.7, font_thickness=2):
@@ -441,6 +417,7 @@ def show_summarized_image(image, frame_landmarks: FrameLandmarks):
     plt.show()
 
     image_bgr = cv2.cvtColor(summary_image, cv2.COLOR_RGB2BGR)
+    return image_bgr
     cv2.imwrite(f'cycling_summary.png', image_bgr)
     print(f"Summary image saved as cycling_summary.png")
 

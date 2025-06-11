@@ -1,4 +1,5 @@
 
+from src.optimal_angles import ANGLE_SPECS
 from src.models import AllLandmarks
 from collections import defaultdict
 from scipy.signal import find_peaks
@@ -44,83 +45,64 @@ def print_angle_stats(angles: list[float], angle_name: str):
     print("-" * (len(angle_name) + 22))
 
 
-def calc_angles(all_frames_landmarks: AllLandmarks) -> dict[str, list[float]]:
+def calc_angles(all_frames_landmarks: AllLandmarks, mode: str) -> dict[str, list[float]]:
     dynamic_angles = defaultdict(list)
 
-    # right_wrist_series = all_frames_landmarks.get_landmark_series(
-    #     "right_wrist")
-    # right_elbow_series = all_frames_landmarks.get_landmark_series(
-    #     "right_elbow")
-    # right_shoulder_series = all_frames_landmarks.get_landmark_series(
-    #     "right_shoulder")
-    # right_hip_series = all_frames_landmarks.get_landmark_series("right_hip")
-    # right_knee_series = all_frames_landmarks.get_landmark_series("right_knee")
-    # right_ankle_series = all_frames_landmarks.get_landmark_series(
-    #     "right_ankle")
-    # right_heel_series = all_frames_landmarks.get_landmark_series("right_heel")
-    # right_foot_index_series = all_frames_landmarks.get_landmark_series(
-    #     "right_foot_index")
+    for frame_lm in all_frames_landmarks.frames_landmarks:
+        for spec in ANGLE_SPECS:
+            if mode not in spec.modes:
+                continue  # skip angles not relevant for this mode
 
-    # Calculate angles for each frame
-    for i in range(len(all_frames_landmarks.frames_landmarks)):
-        frame_lm = all_frames_landmarks.frames_landmarks[i]
-
-        # Upper Body Angles
-        if frame_lm.right_hip and frame_lm.right_shoulder and frame_lm.right_elbow:
-            shoulder_angle = calculate_angle(
-                frame_lm.right_hip, frame_lm.right_shoulder, frame_lm.right_elbow)
-            dynamic_angles["Shoulder Angle (Hip-Shoulder-Elbow)"].append(
-                shoulder_angle)
-
-        if frame_lm.right_shoulder and frame_lm.right_elbow and frame_lm.right_wrist:
-            elbow_angle = calculate_angle(
-                frame_lm.right_shoulder, frame_lm.right_elbow, frame_lm.right_wrist)
-            dynamic_angles["Elbow Angle (Shoulder-Elbow-Wrist)"].append(elbow_angle)
-
-        # Lower Body Angles
-        if frame_lm.right_hip and frame_lm.right_knee and frame_lm.right_ankle:
-            knee_angle = calculate_angle(
-                frame_lm.right_hip, frame_lm.right_knee, frame_lm.right_ankle)
-            dynamic_angles["Knee Angle (Hip-Knee-Ankle)"].append(knee_angle)
-
-        # Torso Angle (e.g., Shoulder-Hip-Horizontal)
-        # This is a bit more complex as it requires a horizontal reference.
-        # For simplicity, let's use the angle formed by hip, shoulder and a point horizontally from shoulder
-        if frame_lm.right_hip and frame_lm.right_shoulder:
-            # Create an artificial point horizontally from the shoulder
-            horizontal_point = Point(
-                frame_lm.right_hip.x + 100, frame_lm.right_hip.y)
-            torso_angle = calculate_angle(
-                frame_lm.right_shoulder, frame_lm.right_hip,  horizontal_point)
-            dynamic_angles["Torso Angle (Shoulder-Hip-Horizontal)"].append(
-                torso_angle)
-
-        # Ankle Angle (Knee-Ankle-Foot Index) # NOT USED IN BIKE FITTING
-        # if frame_lm.right_knee and frame_lm.right_ankle and frame_lm.right_foot_index:
-        #     ankle_angle = calculate_angle(
-        #         frame_lm.right_knee, frame_lm.right_ankle, frame_lm.right_foot_index)
-        #     dynamic_angles["Ankle Angle (Knee-Ankle-Foot Index)"].append(ankle_angle)
+            p1, p2, p3 = spec.points
+            if p3 == "horizontal_reference_point":
+                p3 = Point(
+                    getattr(frame_lm, p2).x + 100, getattr(frame_lm, p2).y)
+                if all(hasattr(frame_lm, p) and getattr(frame_lm, p) for p in (p1, p2)):
+                    angle = calculate_angle(
+                        getattr(frame_lm, p1),
+                        getattr(frame_lm, p2),
+                        p3,
+                    )
+                    dynamic_angles[spec.label].append(angle)
+            elif all(hasattr(frame_lm, p) and getattr(frame_lm, p) for p in (p1, p2, p3)):
+                angle = calculate_angle(
+                    getattr(frame_lm, p1),
+                    getattr(frame_lm, p2),
+                    getattr(frame_lm, p3),
+                )
+                dynamic_angles[spec.label].append(angle)
+            else:
+                print(f"Missing points for angle {spec.label} in frame. "
+                      f"Points: {p1}, {p2}, {p3}")
 
     return dynamic_angles
 
 
-def calc_knee_peaks(dynamic_angles: dict[str, list[float]]) -> tuple[list[int], np.ndarray]:
-    # Calculate the Knee Angle (Hip-Knee-Ankle) peaks
+def calc_peaks(dynamic_angles: dict[str, list[float]], angle_name="Knee Angle (Hip-Knee-Ankle)") -> tuple[list[int], np.ndarray, list[int], np.ndarray]:
+    # Parameters
     peak_detection_distance = 20
-    knee_angles = np.array(dynamic_angles["Knee Angle (Hip-Knee-Ankle)"])
-    # Adjust distance as needed
-    peaks, _ = find_peaks(knee_angles, distance=peak_detection_distance)
-    max_knee_angles = knee_angles[peaks]
 
-    # drop all peaks, that are below the mean of the knee angles
-    mean_knee_angle = np.mean(knee_angles)
-    new_peaks = [peak for peak in peaks if knee_angles[peak] > mean_knee_angle]
-    peaks = new_peaks
-    max_knee_angles = knee_angles[peaks]
-    return peaks, max_knee_angles
+    # Get the angle data
+    angles = np.array(dynamic_angles[angle_name])
+
+    # ------------------------
+    # Find high peaks (maxima)
+    peaks_high, _ = find_peaks(angles, distance=peak_detection_distance)
+    mean_angle = np.mean(angles)
+    peaks_high = [p for p in peaks_high if angles[p] > mean_angle]
+    max_angles = angles[peaks_high]
+
+    # ------------------------
+    # Find low peaks (minima)
+    peaks_low, _ = find_peaks(-angles, distance=peak_detection_distance)
+    peaks_low = [p for p in peaks_low if angles[p] < mean_angle]
+    min_angles = angles[peaks_low]
+
+    return peaks_high, max_angles, peaks_low, min_angles
 
 
-def angles_summary(dynamic_angles: dict[str, list[float]], avg_knee_angle_peaks: float):
+def angles_summary(dynamic_angles: dict[str, list[float]], avg_knee_angle_peaks_high: float,
+                   avg_knee_angle_peaks_low: float):
     print("\n--- Cycling Angle Summary ---")
 
     # Calculate average angles (handle cases where angle list might be empty)
@@ -132,6 +114,8 @@ def angles_summary(dynamic_angles: dict[str, list[float]], avg_knee_angle_peaks:
                                                  [0])) if dynamic_angles.get("Torso Angle (Shoulder-Hip-Horizontal)") else 0
     avg_knee_angle = np.mean(dynamic_angles.get("Knee Angle (Hip-Knee-Ankle)",
                                                 [0])) if dynamic_angles.get("Knee Angle (Hip-Knee-Ankle)") else 0
+    avg_hip_angle = np.mean(dynamic_angles.get("Hip Angle (Shoulder-Hip-Knee)",
+                                               [0])) if dynamic_angles.get("Hip Angle (Shoulder-Hip-Knee)") else 0
     # avg_ankle_angle = np.mean(dynamic_angles.get("Ankle Angle (Knee-Ankle-Foot Index)",
     #                           [0])) if dynamic_angles.get("Ankle Angle (Knee-Ankle-Foot Index)") else 0
 
@@ -147,9 +131,11 @@ def angles_summary(dynamic_angles: dict[str, list[float]], avg_knee_angle_peaks:
     # print(f'Knee Angle (Bottom of Stroke): {knee_angle_bottom:.2f}°')
     # print(f'Knee Angle (Top of Stroke): {knee_angle_top:.2f}°')
     print(f'Knee Angle (Avg): {avg_knee_angle:.2f}°')
-    print(f'Knee Angle Peaks (Avg): {avg_knee_angle_peaks:.2f}°')
+    print(f'Knee Angle Peaks (High): {avg_knee_angle_peaks_high:.2f}°')
+    print(f'Knee Angle Peaks (Low): {avg_knee_angle_peaks_low:.2f}°')
     print(f'Shoulder Angle (Avg): {avg_shoulder_angle:.2f}°')
     print(f'Elbow Angle (Avg): {avg_elbow_angle:.2f}°')
     print(f'Torso Angle (Avg): {avg_torso_angle:.2f}°')
+    print(f'Hip Angle (Avg): {avg_hip_angle:.2f}°')
     # print(f'Ankle Angle (Avg): {avg_ankle_angle:.2f}°')
     print("-----------------------------\n")
