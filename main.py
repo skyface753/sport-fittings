@@ -80,10 +80,10 @@ def main(video_path, fitting_mode="hood"):
     for frame_lm in all_frames_landmarks.frames_landmarks:
         frame_lm.from_gpu_to_cpu()
 
-    plot_image_with_points(
-        first_image_mp, first_frame_landmarks_mp, with_foot_details=True)
+    # plot_image_with_points(
+    #     first_image_mp, first_frame_landmarks_mp, with_foot_details=True)
 
-    inspect_first_frame_landmarks(first_frame_landmarks_mp)
+    # inspect_first_frame_landmarks(first_frame_landmarks_mp)
 
     # Calculate the angles
     dynamic_angles = calc_angles(all_frames_landmarks, mode=fitting_mode)
@@ -94,7 +94,11 @@ def main(video_path, fitting_mode="hood"):
     show_top_and_bottom_knee_extension(dynamic_angles, video_path)
     show_video_with_landmarks(video_path, min(int(VIDEO_DURATION * video_fps), 200),  # dont go over the max index
                               all_frames_landmarks, with_foot_details=True)
-
+    
+    # print(peaks_high)
+    # get AllFramesLandmarks at the first peak index
+    a = all_frames_landmarks.frames_landmarks[peaks_high[0]]
+    print(a)
     # can be: heel, foot_index or ankle, ankle_vs_index
     foot_point_to_use = KOPS_Point.foot_index
 
@@ -130,8 +134,12 @@ def main(video_path, fitting_mode="hood"):
     with open(f"{fitting_mode}_bike_fit_recommendations.txt", "w") as f:
         for i, rec in enumerate(recommendations):
             f.write(f"{i + 1}. {rec}\n")
-
-
+    from src.recommondations import get_optimal_ranges
+    optimal_range_bottom = get_optimal_ranges(
+        "Knee Angle (Hip-Knee-Ankle)", fitting_mode)[0]
+    
+    # print(f"Adjust seat height by: {calculate_seat_height_adjustment(current_angle=155, optimal_range=optimal_range_bottom, sensitivity_factor=4)} cm")
+    
 if __name__ == "__main__":
     # TOP BAR
     VIDEO_PATH = "datasets/cycling-sebastian/Hands_Top.mov"

@@ -30,6 +30,48 @@ def calculate_angle(a: Point, b: Point, c: Point) -> float:
     angle_deg = np.degrees(angle_rad)
     return angle_deg
 
+def calculate_seat_height_adjustment(
+    current_angle: float,
+    # optimal_range: tuple[float, float],
+    next_optimal_angle: float,
+    sensitivity_factor: float = 0.5 # Degrees per cm of seat height change (example value)
+) -> float:
+    """
+    Calculates the required seat height adjustment (in cm) based on the current angle
+    and an optimal range.
+
+    Args:
+        current_angle: The currently measured angle in degrees.
+        optimal_range: A tuple (min_angle, max_angle) representing the desired
+                       range for the angle in degrees.
+        sensitivity_factor: How many degrees the angle changes for every 1 cm
+                            of seat height adjustment. This value is CRITICAL
+                            and needs to be determined empirically or via a
+                            biomechanical model. A positive value means
+                            increasing seat height increases the angle.
+
+    Returns:
+        The required seat height adjustment in centimeters.
+        - Positive value: Increase seat height.
+        - Negative value: Decrease seat height.
+        - 0.0: Angle is within the optimal range.
+    """
+    # min_optimal_angle, max_optimal_angle = optimal_range
+    print(f"Current angle: {current_angle:.2f}°")
+    print(f"Next optimal angle: {next_optimal_angle:.2f}°")
+
+    # if min_optimal_angle <= current_angle <= max_optimal_angle:
+    #     return 0.0  # Angle is already within the optimal range
+
+    if sensitivity_factor == 0:
+        print("Warning: Sensitivity factor is zero, cannot calculate adjustment.")
+        return 0.0
+
+    angle_difference = next_optimal_angle - current_angle
+    adjustment = angle_difference / sensitivity_factor
+    return adjustment
+
+
 
 def print_angle_stats(angles: list[float], angle_name: str):
     """Prints statistics for a list of angles."""

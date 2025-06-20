@@ -1,5 +1,6 @@
 
 from src.optimal_angles import ANGLE_SPECS
+from src.angles_functions import calculate_seat_height_adjustment
 import numpy as np
 
 
@@ -15,7 +16,8 @@ def get_optimal_ranges(angle_label: str, mode: str) -> list[tuple[int, int]]:
 def get_bike_fit_recommendations(angles_data: dict[str, list[float]],
                                  avg_knee_angle_peaks_high: float,
                                  avg_knee_angle_peaks_low: float,
-                                 mode: str) -> list[str]:
+                                 mode: str,
+                                 seat_height_sensitive_factor: int = 4) -> list[str]:
     """
     Generates bike fit recommendations based on calculated angles and standard ranges.
     """
@@ -56,9 +58,12 @@ def get_bike_fit_recommendations(angles_data: dict[str, list[float]],
         if avg_knee_angle_peaks_high < knee_bottom_range[0]:
             recommendations.append(
                 f"• Saddle might be TOO LOW. Raise saddle height. (Optimal: {knee_bottom_range[0]}-{knee_bottom_range[1]}°)")
+            recommendations.append(f"• Maybe try: {calculate_seat_height_adjustment(current_angle=avg_knee_angle_peaks_high, next_optimal_angle=knee_bottom_range[0], sensitivity_factor=seat_height_sensitive_factor)} cm higher saddle.")
         elif avg_knee_angle_peaks_high > knee_bottom_range[1]:
             recommendations.append(
                 f"• Saddle might be TOO HIGH. Lower saddle height. (Optimal: {knee_bottom_range[0]}-{knee_bottom_range[1]}°)")
+            # calculate_seat_height_adjustment(current_angle=knee_bottom_range[1], optimal_range=knee_bottom_range, sensitivity_factor=seat_height_sensitive_factor)
+            recommendations.append(f"• Maybe try: {calculate_seat_height_adjustment(current_angle=avg_knee_angle_peaks_high, next_optimal_angle=knee_bottom_range[1], sensitivity_factor=seat_height_sensitive_factor)} cm lower saddle.")
         else:
             recommendations.append(
                 f"• Knee extension (bottom): Within optimal range. ({knee_bottom_range[0]}-{knee_bottom_range[1]}°)")

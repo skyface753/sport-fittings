@@ -56,6 +56,18 @@ class FrameLandmarks:
         for attr_name in dir(self):
             if isinstance(getattr(self, attr_name), Point):
                 getattr(self, attr_name).get_from_gpu()
+                
+    def __str__(self): 
+        """String representation of the frame landmarks."""
+        return (f"Nose: {self.nose}, Right Wrist: {self.right_wrist}, "
+                f"Right Elbow: {self.right_elbow}, Right Shoulder: {self.right_shoulder}, "
+                f"Right Hip: {self.right_hip}, Right Knee: {self.right_knee}, "
+                f"Right Ankle: {self.right_ankle}, Right Foot Index: {self.right_foot_index}, "
+                f"Right Heel: {self.right_heel}, Left Wrist: {self.left_wrist}, "
+                f"Left Elbow: {self.left_elbow}, Left Shoulder: {self.left_shoulder}, "
+                f"Left Hip: {self.left_hip}, Left Knee: {self.left_knee}, "
+                f"Left Ankle: {self.left_ankle}, Left Foot Index: {self.left_foot_index}, "
+                f"Left Heel: {self.left_heel}")
 
 
 class AllLandmarks:
