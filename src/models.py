@@ -79,6 +79,10 @@ class AllLandmarks:
     def append_frame(self, frame_landmarks: FrameLandmarks):
         self.frames_landmarks.append(frame_landmarks)
 
+    def append_empty_frame(self):
+        """Appends an empty FrameLandmarks object to the list."""
+        self.frames_landmarks.append(FrameLandmarks())
+
     def get_landmark_series(self, landmark_name: str) -> list[Point]:
         """Returns a list of Points for a specific landmark across all frames."""
         series = []

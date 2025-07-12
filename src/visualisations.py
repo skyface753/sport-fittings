@@ -21,7 +21,7 @@ angle_label_to_attrs = {
 }
 
 
-def plot_image_with_points(image, frame_landmarks: FrameLandmarks, output_dir: str, with_foot_details=False):
+def plot_image_with_points(image, frame_landmarks: FrameLandmarks, output_dir: str, output_prefix="", with_foot_details=False):
     """Plots an image with detected body landmarks."""
     plt.figure(figsize=(16, 10))  # to set the figure size
     plt.imshow(image)
@@ -77,34 +77,35 @@ def plot_image_with_points(image, frame_landmarks: FrameLandmarks, output_dir: s
     plt.legend()
     plt.grid(True)
     plt.title("Keypoints Detection")
-    image_path = os.path.join(output_dir, "keypoints_detection.png")
+    image_path = os.path.join(
+        output_dir, f"{output_prefix}keypoints_detection.png")
     plt.savefig(image_path, bbox_inches='tight', pad_inches=0.1)
 
 
-def get_image_at_index(video_path: str, index: int):
-    """Retrieves a specific frame from the video."""
-    cap = cv2.VideoCapture(video_path)
+# def get_image_at_index(video_path: str, index: int):
+#     """Retrieves a specific frame from the video."""
+#     cap = cv2.VideoCapture(video_path)
 
-    if not cap.isOpened():
-        print("Error opening video stream or file")
-        raise TypeError
-    video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+#     if not cap.isOpened():
+#         print("Error opening video stream or file")
+#         raise TypeError
+#     video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    if index >= video_length or index < 0:
-        print(f'Invalid frame index: {index}. Video length: {video_length}')
-        cap.release()
-        return None
+#     if index >= video_length or index < 0:
+#         print(f'Invalid frame index: {index}. Video length: {video_length}')
+#         cap.release()
+#         return None
 
-    cap.set(cv2.CAP_PROP_POS_FRAMES, index)
-    ret, frame = cap.read()
-    cap.release()
-    if ret:
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        return frame
-    return None
+#     cap.set(cv2.CAP_PROP_POS_FRAMES, index)
+#     ret, frame = cap.read()
+#     cap.release()
+#     if ret:
+#         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+#         return frame
+#     return None
 
 
-def save_frame_from_video(video_path: str, index: int, title: str, output_dir: str = "output_frames"):
+def save_frame_from_video(all_video_frames: list[np.ndarray], index: int, title: str, output_dir: str = "output_frames", output_prefix: str = ""):
     """
     Extracts a specific frame from the video, adds a title, saves it as an image file,
     and returns the path to the saved image.
@@ -118,8 +119,9 @@ def save_frame_from_video(video_path: str, index: int, title: str, output_dir: s
     Returns:
         The path to the saved image file, or None if the frame could not be retrieved.
     """
-    frame = get_image_at_index(
-        video_path, index)  # You need to have this function defined
+    # frame = get_image_at_index(
+    #     video_path, index)  # You need to have this function defined
+    frame = all_video_frames[index] if index < len(all_video_frames) else None
 
     if frame is not None:
         # Ensure the output directory exists
@@ -128,7 +130,7 @@ def save_frame_from_video(video_path: str, index: int, title: str, output_dir: s
         # Sanitize title for filename: replace spaces with underscores and remove special chars
         filename_title = "".join(
             c if c.isalnum() else "_" for c in title).strip("_")
-        image_filename = f"{filename_title}_frame_{index}.png"
+        image_filename = f"{output_prefix}{filename_title}_frame_{index}.png"
         image_path = os.path.join(output_dir, image_filename)
 
         plt.figure(figsize=(16, 10))
@@ -143,7 +145,7 @@ def save_frame_from_video(video_path: str, index: int, title: str, output_dir: s
         print(f"Frame saved to: {image_path}")
         return image_path
     else:
-        print(f"Could not retrieve frame at index {index} from {video_path}")
+        print(f"Could not retrieve frame at index {index} from the video.")
         return None
 
 
@@ -197,7 +199,11 @@ def plot_angles_over_time(
     # optimal_angles = OptimalAngles()
     # angles_dict = asdict(optimal_angles)
 
-    plt.figure(figsize=(15, 6))
+    # plt.figure(figsize=(15, 6))
+    # fig, ax = plt.subplots(figsize=(15, 6))
+    fig = plt.figure("AnglePlot", figsize=(10, 6))  # Named figure to reuse
+    plt.clf()  # Clear the current figure
+    ax = fig.add_subplot(111)
 
     # Corrected way to get a discrete colormap:
     # Get the 'tab10' colormap object
@@ -216,14 +222,14 @@ def plot_angles_over_time(
         if angles:
             line_color = colors(i)
             # Plot the angle series
-            plt.plot(angles, label=angle_label, color=line_color)
+            ax.plot(angles, label=angle_label, color=line_color)
 
             spec = next((s for s in angle_specs if s.label ==
                         angle_label and mode in s.modes), None)
             if spec:
                 ranges = spec.optimal_ranges.get(mode, [])
                 for (min_val, max_val) in ranges:
-                    plt.axhspan(min_val, max_val, color=line_color, alpha=0.2)
+                    ax.axhspan(min_val, max_val, color=line_color, alpha=0.2)
             else:
                 print(
                     f"No optimal ranges found for {angle_label} in the provided optimal angles. Maybe its normal (eg. no Torso Angle for Aeros).")
@@ -234,7 +240,7 @@ def plot_angles_over_time(
             # for attr_name in attr_names:
             #     if attr_name in angles_dict:
             #         min_val, max_val = angles_dict[attr_name]
-            #         plt.axhspan(min_val, max_val,
+            #         ax.axhspan(min_val, max_val,
             #                     color=line_color, alpha=0.2)
             #         found = True
             #         print(
@@ -249,27 +255,31 @@ def plot_angles_over_time(
             # Add peaks for "Knee Angle (Hip-Knee-Ankle)"
             if angle_label == "Knee Angle (Hip-Knee-Ankle)":
                 if knee_peaks_high is not None and max_knee_angles is not None:
-                    plt.plot(knee_peaks_high, max_knee_angles, "x", color='red', markersize=8,
-                             label='Knee Angle Peaks' if not knee_peaks_added else "_nolegend_")
+                    ax.plot(knee_peaks_high, max_knee_angles, "x", color='red', markersize=8,
+                            label='Knee Angle Peaks' if not knee_peaks_added else "_nolegend_")
                     knee_peaks_added = True  # Mark that peaks have been added
                 if knee_peaks_low is not None and min_knee_angles is not None:
-                    plt.plot(knee_peaks_low, min_knee_angles, "x", color='blue', markersize=8,
-                             label='Knee Angle Valleys' if not knee_valleys_added else "_nolegend_")
+                    ax.plot(knee_peaks_low, min_knee_angles, "x", color='blue', markersize=8,
+                            label='Knee Angle Valleys' if not knee_valleys_added else "_nolegend_")
                     knee_valleys_added = True  # Mark that valleys have been added
             if angle_label == "Hip Angle (Shoulder-Hip-Knee)":
                 if hip_peaks_low is not None and min_hip_angles is not None:
-                    plt.plot(hip_peaks_low, min_hip_angles, "x", color='green', markersize=8,
-                             label='Hip Angle Valleys' if not hip_valleys_added else "_nolegend_")
+                    ax.plot(hip_peaks_low, min_hip_angles, "x", color='green', markersize=8,
+                            label='Hip Angle Valleys' if not hip_valleys_added else "_nolegend_")
                     hip_valleys_added = True
 
-    plt.title(title)
-    plt.xlabel("Frame Number")
-    plt.ylabel("Angle (degrees)")
-    plt.grid(True)
-    plt.legend()  # Display legend for all lines and the peak marker
-    plt.savefig(os.path.join(output_dir, f"{title}.png"),
+    ax.set_title(title)
+    ax.set_xlabel("Frame Number")
+    ax.set_ylabel("Angle (degrees)")
+    ax.grid(True)
+    ax.legend()  # Display legend for all lines and the peak marker
+    fig.savefig(os.path.join(output_dir, f"{title}.png"),
                 bbox_inches='tight', pad_inches=0.1)  # Save the figure
-    plt.close()  # Close the figure to free up memory
+    # ax.close()  # Close the figure to free up memory
+    # return fig
+    fig.canvas.manager.set_window_title(title)  # Set the window title
+    fig.tight_layout()
+    fig.show()
 
 
 def draw_angle_on_image_precise(image, p1: Point, p_vertex: Point, p2: Point, angle_value: float, color=(0, 255, 255), line_thickness=2, arc_radius=50, font_scale=0.7, font_thickness=2):
@@ -409,7 +419,7 @@ def show_summarized_image(image, frame_landmarks: FrameLandmarks, output_dir):
     print(f"Summary image saved as cycling_summary.png")
 
 
-def show_top_and_bottom_knee_extension(dynamic_angles: dict[str, list[float]], video_path: str, output_dir: str):
+def show_top_and_bottom_knee_extension(dynamic_angles: dict[str, list[float]], all_video_frames, output_dir: str, output_prefix=""):
     # Find the frames for min/max knee extension
     knee_angles_list = dynamic_angles.get("Knee Angle (Hip-Knee-Ankle)", [])
     foot_bottom_index_mp = -1
@@ -429,10 +439,10 @@ def show_top_and_bottom_knee_extension(dynamic_angles: dict[str, list[float]], v
         #                     "Foot at Bottom (Max Knee Extension)")
         # show_video_at_index(video_path, foot_top_index_mp,
         #                     "Foot at Top (Min Knee Extension)")
-        save_frame_from_video(video_path, foot_bottom_index_mp,
-                              "Foot at Bottom (Max Knee Extension)", output_dir=output_dir)
-        save_frame_from_video(video_path, foot_top_index_mp,
-                              "Foot at Top (Min Knee Extension)", output_dir=output_dir)
+        save_frame_from_video(all_video_frames, foot_bottom_index_mp,
+                              "Foot at Bottom (Max Knee Extension)", output_dir=output_dir, output_prefix=output_prefix)
+        save_frame_from_video(all_video_frames, foot_top_index_mp,
+                              "Foot at Top (Min Knee Extension)", output_dir=output_dir, output_prefix=output_prefix)
     else:
         print("\nCould not calculate knee angles with MediaPipe to determine foot bottom/top frames.")
 
@@ -440,25 +450,29 @@ def show_top_and_bottom_knee_extension(dynamic_angles: dict[str, list[float]], v
 # get the video at a custom index, and apply the landmarks at that index
 
 
-def get_video_at_index(video_path, index: int, landmarks: AllLandmarks):
-    """Retrieves a specific frame from the video and applies landmarks."""
-    frame = get_image_at_index(video_path, index)
-    if frame is not None:
-        # Convert to RGB for plotting
-        #        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        # Get the landmarks for this index
-        if 0 <= index < len(landmarks.frames_landmarks):
-            frame_landmarks = landmarks.frames_landmarks[index]
-            return frame, frame_landmarks
-    return None, None
+# def get_video_at_index(video_path, index: int, landmarks: AllLandmarks):
+#     """Retrieves a specific frame from the video and applies landmarks."""
+#     frame = get_image_at_index(video_path, index)
+#     if frame is not None:
+#         # Convert to RGB for plotting
+#         #        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+#         # Get the landmarks for this index
+#         if 0 <= index < len(landmarks.frames_landmarks):
+#             frame_landmarks = landmarks.frames_landmarks[index]
+#             return frame, frame_landmarks
+#     return None, None
 
 
-def show_video_with_landmarks(video_path, index: int, landmarks: AllLandmarks, output_dir, with_foot_details=False):
+def show_video_with_landmarks(all_video_frames, index: int, landmarks: AllLandmarks, output_dir, output_prefix="", with_foot_details=False):
     """Displays a specific frame from the video with landmarks."""
-    frame_rgb, frame_landmarks = get_video_at_index(
-        video_path, index, landmarks)
+    # frame_rgb, frame_landmarks = get_video_at_index(
+    #     video_path, index, landmarks)
+    frame_rgb = all_video_frames[index] if index < len(
+        all_video_frames) else None
+    frame_landmarks = landmarks.frames_landmarks[index] if index < len(
+        landmarks.frames_landmarks) else None
     if frame_rgb is not None and frame_landmarks is not None:
         plot_image_with_points(frame_rgb, frame_landmarks,
-                               output_dir, with_foot_details)
+                               output_dir, output_prefix, with_foot_details)
     else:
         print(f"Could not retrieve or display frame at index {index}")

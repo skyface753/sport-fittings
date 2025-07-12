@@ -106,16 +106,25 @@ def calc_angles(all_frames_landmarks: AllLandmarks, mode: str, angle_specs) -> d
                 continue  # skip angles not relevant for this mode
 
             p1, p2, p3 = spec.points
+            if not hasattr(frame_lm, p1) or not hasattr(frame_lm, p2):
+                # print(f"Missing points for angle {spec.label} in frame. "
+                #       f"Points: {p1}, {p2}, {p3}")
+                continue
             if p3 == "horizontal_reference_point":
-                p3 = Point(
-                    getattr(frame_lm, p2).x + 100, getattr(frame_lm, p2).y)
-                if all(hasattr(frame_lm, p) and getattr(frame_lm, p) for p in (p1, p2)):
-                    angle = calculate_angle(
-                        getattr(frame_lm, p1),
-                        getattr(frame_lm, p2),
-                        p3,
-                    )
-                    dynamic_angles[spec.label].append(angle)
+                if hasattr(frame_lm, p2) and getattr(frame_lm, p2) is not None:
+                    p3 = Point(
+                        getattr(frame_lm, p2).x + 100, getattr(frame_lm, p2).y)
+                    if all(hasattr(frame_lm, p) and getattr(frame_lm, p) for p in (p1, p2)):
+                        angle = calculate_angle(
+                            getattr(frame_lm, p1),
+                            getattr(frame_lm, p2),
+                            p3,
+                        )
+                        dynamic_angles[spec.label].append(angle)
+                else:
+                    continue
+                    # print(
+                    #     f"Horizontal reference point {p2} not found in frame for angle {spec.label}.")
             elif all(hasattr(frame_lm, p) and getattr(frame_lm, p) for p in (p1, p2, p3)):
                 angle = calculate_angle(
                     getattr(frame_lm, p1),

@@ -2,7 +2,7 @@
 import matplotlib.pyplot as plt
 from enum import Enum
 from src.models import AllLandmarks, Point
-from src.visualisations import get_image_at_index
+# from src.visualisations import get_image_at_index
 import cv2
 
 
@@ -14,7 +14,7 @@ class KOPS_Point(Enum):
     heel_3_4_index = "heel_3_4_index"  # 3/4 of the way from heel to foot_index
 
 
-def calculate_kops_and_get_frame_user_idea(all_landmarks: AllLandmarks, video_path: str, foot_point_to_use: KOPS_Point) -> dict:
+def calculate_kops_and_get_frame_user_idea(all_landmarks: AllLandmarks, all_video_frames, foot_point_to_use: KOPS_Point) -> dict:
     """
     Calculates KOPS (Knee Over Pedal Spindle) for the right leg based on the user's idea:
     finds the frame where the right_foot_index has the highest X-coordinate (most right),
@@ -67,7 +67,9 @@ def calculate_kops_and_get_frame_user_idea(all_landmarks: AllLandmarks, video_pa
             kops_value = reference_point.x - knee_point.x
 
             # Retrieve the image for visualization
-            image = get_image_at_index(video_path, identified_frame_index)
+            # image = get_image_at_index(video_path, identified_frame_index)
+            image = all_video_frames[identified_frame_index] if identified_frame_index < len(
+                all_video_frames) else None
             if image is not None:
                 knee_x, knee_y = int(knee_point.x), int(knee_point.y)
                 ankle_x, ankle_y = int(
@@ -128,7 +130,7 @@ def calculate_kops_and_get_frame_user_idea(all_landmarks: AllLandmarks, video_pa
     return results
 
 
-def print_kops_analysis_results(kops_analysis_results: dict, kops_point: KOPS_Point, output_dir: str):
+def print_kops_analysis_results(kops_analysis_results: dict, kops_point: KOPS_Point, output_dir: str, output_prefix: str = ""):
     print("\n--- KOPS Analysis (User's Idea) ---")
     kops_point_v = kops_point.value
     if kops_analysis_results['kops_value'] is not None:
@@ -147,7 +149,7 @@ def print_kops_analysis_results(kops_analysis_results: dict, kops_point: KOPS_Po
                 # Convert
                 # CV2 uses BGR format
                 img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-                cv2.imwrite(f"{output_dir}/kops_visualization_{kops_point_v}.png",
+                cv2.imwrite(f"{output_dir}/{output_prefix}kops_visualization_{kops_point_v}.png",
                             img)
                 # plt.figure(figsize=(10, 8))
                 # plt.imshow(kops_analysis_results['best_kops_frame_image'])
