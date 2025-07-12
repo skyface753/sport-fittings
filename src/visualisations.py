@@ -6,9 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import ListedColormap
 from src.angles_functions import calculate_angle
-from src.optimal_angles import ANGLE_SPECS
 from dataclasses import asdict
-
+import os
 
 # Maps display names to OptimalAngles attribute names
 angle_label_to_attrs = {
@@ -22,7 +21,7 @@ angle_label_to_attrs = {
 }
 
 
-def plot_image_with_points(image, frame_landmarks: FrameLandmarks, with_foot_details=False):
+def plot_image_with_points(image, frame_landmarks: FrameLandmarks, output_dir: str, with_foot_details=False):
     """Plots an image with detected body landmarks."""
     plt.figure(figsize=(16, 10))  # to set the figure size
     plt.imshow(image)
@@ -78,7 +77,8 @@ def plot_image_with_points(image, frame_landmarks: FrameLandmarks, with_foot_det
     plt.legend()
     plt.grid(True)
     plt.title("Keypoints Detection")
-    plt.show()
+    image_path = os.path.join(output_dir, "keypoints_detection.png")
+    plt.savefig(image_path, bbox_inches='tight', pad_inches=0.1)
 
 
 def get_image_at_index(video_path: str, index: int):
@@ -104,17 +104,47 @@ def get_image_at_index(video_path: str, index: int):
     return None
 
 
-def show_video_at_index(video_path: str, index: int, title: str):
-    """Displays a specific frame from the video with a title."""
-    frame = get_image_at_index(video_path, index)
+def save_frame_from_video(video_path: str, index: int, title: str, output_dir: str = "output_frames"):
+    """
+    Extracts a specific frame from the video, adds a title, saves it as an image file,
+    and returns the path to the saved image.
+
+    Args:
+        video_path: Path to the video file.
+        index: The index of the frame to extract.
+        title: The title to add to the image.
+        output_dir: The directory where the image will be saved. Defaults to "output_frames".
+
+    Returns:
+        The path to the saved image file, or None if the frame could not be retrieved.
+    """
+    frame = get_image_at_index(
+        video_path, index)  # You need to have this function defined
+
     if frame is not None:
-        plt.figure(figsize=(16, 10))  # to set the figure size
+        # Ensure the output directory exists
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Sanitize title for filename: replace spaces with underscores and remove special chars
+        filename_title = "".join(
+            c if c.isalnum() else "_" for c in title).strip("_")
+        image_filename = f"{filename_title}_frame_{index}.png"
+        image_path = os.path.join(output_dir, image_filename)
+
+        plt.figure(figsize=(16, 10))
         plt.imshow(frame)
         plt.title(title)
-        plt.axis('off')  # Hide axes for cleaner image
-        plt.show()
+        plt.axis('off')
+
+        plt.savefig(image_path, bbox_inches='tight',
+                    pad_inches=0.1)  # Save the figure
+        plt.close()  # Close the figure to free up memory
+
+        print(f"Frame saved to: {image_path}")
+        return image_path
     else:
-        print(f"Could not retrieve frame at index {index}")
+        print(f"Could not retrieve frame at index {index} from {video_path}")
+        return None
 
 
 def add_text_to_image(image, text: str, pos: int, video_height: int, font_scale: float = 0.8, thickness: int = 1):
@@ -134,7 +164,8 @@ def add_text_to_image(image, text: str, pos: int, video_height: int, font_scale:
 def plot_angles_over_time(
     angles_data: dict[str, list[float]],
     title: str,
-    save: bool = True,
+    angle_specs,
+    output_dir: str,
     # optimal_ranges: dict[str, tuple[float, float]] | None = None,
     knee_peaks_high=None, max_knee_angles=None,
     knee_peaks_low=None, min_knee_angles=None,
@@ -187,7 +218,7 @@ def plot_angles_over_time(
             # Plot the angle series
             plt.plot(angles, label=angle_label, color=line_color)
 
-            spec = next((s for s in ANGLE_SPECS if s.label ==
+            spec = next((s for s in angle_specs if s.label ==
                         angle_label and mode in s.modes), None)
             if spec:
                 ranges = spec.optimal_ranges.get(mode, [])
@@ -236,9 +267,9 @@ def plot_angles_over_time(
     plt.ylabel("Angle (degrees)")
     plt.grid(True)
     plt.legend()  # Display legend for all lines and the peak marker
-    if save:
-        plt.savefig(f'{title}.png')
-    plt.show()
+    plt.savefig(os.path.join(output_dir, f"{title}.png"),
+                bbox_inches='tight', pad_inches=0.1)  # Save the figure
+    plt.close()  # Close the figure to free up memory
 
 
 def draw_angle_on_image_precise(image, p1: Point, p_vertex: Point, p2: Point, angle_value: float, color=(0, 255, 255), line_thickness=2, arc_radius=50, font_scale=0.7, font_thickness=2):
@@ -311,57 +342,12 @@ def draw_angle_on_image_precise(image, p1: Point, p_vertex: Point, p2: Point, an
     return image
 
 
-def show_summarized_image(image, frame_landmarks: FrameLandmarks):
+def show_summarized_image(image, frame_landmarks: FrameLandmarks, output_dir):
     """
     Shows a summarized image with average angles, specific knee angles, and bike fit recommendations,
     and draws the angles on the image.
     """
     summary_image = image.copy()
-
-    # knee_angles_list = angles_data.get("Knee Angle (Hip-Knee-Ankle)", [])
-    # knee_angle_bottom = knee_angles_list[bottom_idx] if 0 <= bottom_idx < len(
-    #     knee_angles_list) else 0
-    # knee_angle_top = knee_angles_list[top_idx] if 0 <= top_idx < len(
-    #     knee_angles_list) else 0
-
-    # avg_shoulder_angle = np.mean(angles_data.get("Shoulder Angle (Hip-Shoulder-Elbow)", [
-    #                              0])) if angles_data.get("Shoulder Angle (Hip-Shoulder-Elbow)") else 0
-    # avg_elbow_angle = np.mean(angles_data.get("Elbow Angle (Shoulder-Elbow-Wrist)", [
-    #                           0])) if angles_data.get("Elbow Angle (Shoulder-Elbow-Wrist)") else 0
-    # avg_torso_angle = np.mean(angles_data.get("Torso Angle (Shoulder-Hip-Horizontal)", [
-    #                           0])) if angles_data.get("Torso Angle (Shoulder-Hip-Horizontal)") else 0
-    # avg_knee_angle = np.mean(angles_data.get(
-    #     "Knee Angle (Hip-Knee-Ankle)", [0])) if angles_data.get("Knee Angle (Hip-Knee-Ankle)") else 0
-    # avg_ankle_angle = np.mean(angles_data.get("Ankle Angle (Knee-Ankle-Foot Index)", [
-    #                           0])) if angles_data.get("Ankle Angle (Knee-Ankle-Foot Index)") else 0
-
-    # text_font_scale = 0.6
-    # text_thickness = 1
-    # text_color = (255, 255, 255)
-
-    # if angles_text:
-    #     line_pos = 1
-    #     add_text_to_image(
-    #         summary_image, f'Knee Angle (Bottom): {knee_angle_bottom:.2f}°', line_pos, text_font_scale, text_thickness)
-    #     line_pos += 1
-    #     add_text_to_image(
-    #         summary_image, f'Knee Angle (Top): {knee_angle_top:.2f}°', line_pos, text_font_scale, text_thickness)
-    #     line_pos += 1
-    #     add_text_to_image(
-    #         summary_image, f'Knee Angle (Avg): {avg_knee_angle:.2f}°', line_pos, text_font_scale, text_thickness)
-    #     line_pos += 1
-    #     add_text_to_image(
-    #         summary_image, f'Shoulder Angle (Avg): {avg_shoulder_angle:.2f}°', line_pos, text_font_scale, text_thickness)
-    #     line_pos += 1
-    #     add_text_to_image(
-    #         summary_image, f'Elbow Angle (Avg): {avg_elbow_angle:.2f}°', line_pos, text_font_scale, text_thickness)
-    #     line_pos += 1
-    #     add_text_to_image(
-    #         summary_image, f'Torso Angle (Avg): {avg_torso_angle:.2f}°', line_pos, text_font_scale, text_thickness)
-    #     line_pos += 1
-    #     add_text_to_image(
-    #         summary_image, f'Ankle Angle (Avg): {avg_ankle_angle:.2f}°', line_pos, text_font_scale, text_thickness)
-    #     line_pos += 1
 
     # --- Draw the angles on the image ---
     # Draw Knee Angle (Hip-Knee-Ankle)
@@ -414,7 +400,8 @@ def show_summarized_image(image, frame_landmarks: FrameLandmarks):
     plt.imshow(summary_image)
     plt.title(f"Bike Fitting Summary")
     plt.axis('off')
-    plt.show()
+    plt.savefig(os.path.join(output_dir, "cycling_summary.png"),
+                bbox_inches='tight', pad_inches=0.1)
 
     image_bgr = cv2.cvtColor(summary_image, cv2.COLOR_RGB2BGR)
     return image_bgr
@@ -422,7 +409,7 @@ def show_summarized_image(image, frame_landmarks: FrameLandmarks):
     print(f"Summary image saved as cycling_summary.png")
 
 
-def show_top_and_bottom_knee_extension(dynamic_angles: dict[str, list[float]], video_path: str):
+def show_top_and_bottom_knee_extension(dynamic_angles: dict[str, list[float]], video_path: str, output_dir: str):
     # Find the frames for min/max knee extension
     knee_angles_list = dynamic_angles.get("Knee Angle (Hip-Knee-Ankle)", [])
     foot_bottom_index_mp = -1
@@ -438,10 +425,14 @@ def show_top_and_bottom_knee_extension(dynamic_angles: dict[str, list[float]], v
             f"\nFoot at Bottom (Max Knee Extension) Frame Index (MediaPipe): {foot_bottom_index_mp}")
         print(
             f"Foot at Top (Min Knee Extension) Frame Index (MediaPipe): {foot_top_index_mp}")
-        show_video_at_index(video_path, foot_bottom_index_mp,
-                            "Foot at Bottom (Max Knee Extension)")
-        show_video_at_index(video_path, foot_top_index_mp,
-                            "Foot at Top (Min Knee Extension)")
+        # show_video_at_index(video_path, foot_bottom_index_mp,
+        #                     "Foot at Bottom (Max Knee Extension)")
+        # show_video_at_index(video_path, foot_top_index_mp,
+        #                     "Foot at Top (Min Knee Extension)")
+        save_frame_from_video(video_path, foot_bottom_index_mp,
+                              "Foot at Bottom (Max Knee Extension)", output_dir=output_dir)
+        save_frame_from_video(video_path, foot_top_index_mp,
+                              "Foot at Top (Min Knee Extension)", output_dir=output_dir)
     else:
         print("\nCould not calculate knee angles with MediaPipe to determine foot bottom/top frames.")
 
@@ -462,11 +453,12 @@ def get_video_at_index(video_path, index: int, landmarks: AllLandmarks):
     return None, None
 
 
-def show_video_with_landmarks(video_path, index: int, landmarks: AllLandmarks, with_foot_details=False):
+def show_video_with_landmarks(video_path, index: int, landmarks: AllLandmarks, output_dir, with_foot_details=False):
     """Displays a specific frame from the video with landmarks."""
     frame_rgb, frame_landmarks = get_video_at_index(
         video_path, index, landmarks)
     if frame_rgb is not None and frame_landmarks is not None:
-        plot_image_with_points(frame_rgb, frame_landmarks, with_foot_details)
+        plot_image_with_points(frame_rgb, frame_landmarks,
+                               output_dir, with_foot_details)
     else:
         print(f"Could not retrieve or display frame at index {index}")

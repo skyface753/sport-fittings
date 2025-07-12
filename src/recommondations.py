@@ -1,12 +1,11 @@
 
-from src.optimal_angles import ANGLE_SPECS
 from src.angles_functions import calculate_seat_height_adjustment
 import numpy as np
 
 
-def get_optimal_ranges(angle_label: str, mode: str) -> list[tuple[int, int]]:
+def get_optimal_ranges(angle_label: str, mode: str, angle_specs) -> list[tuple[int, int]]:
     # Find spec matching label and mode
-    spec = next((s for s in ANGLE_SPECS if s.label ==
+    spec = next((s for s in angle_specs if s.label ==
                 angle_label and mode in s.modes), None)
     if spec:
         return spec.optimal_ranges.get(mode, [])
@@ -16,7 +15,9 @@ def get_optimal_ranges(angle_label: str, mode: str) -> list[tuple[int, int]]:
 def get_bike_fit_recommendations(angles_data: dict[str, list[float]],
                                  avg_knee_angle_peaks_high: float,
                                  avg_knee_angle_peaks_low: float,
+                                 kops_value: float,
                                  mode: str,
+                                 angle_specs,
                                  seat_height_sensitive_factor: int = 4) -> list[str]:
     """
     Generates bike fit recommendations based on calculated angles and standard ranges.
@@ -30,7 +31,7 @@ def get_bike_fit_recommendations(angles_data: dict[str, list[float]],
 
     # Knee bottom extension ranges: assume first range in list
     knee_bottom_ranges = get_optimal_ranges(
-        "Knee Angle (Hip-Knee-Ankle)", mode)
+        "Knee Angle (Hip-Knee-Ankle)", mode, angle_specs)
     # We expect the first range to be bottom, second top — if both present
     knee_bottom_range = knee_bottom_ranges[0] if len(
         knee_bottom_ranges) > 0 else None
@@ -39,16 +40,17 @@ def get_bike_fit_recommendations(angles_data: dict[str, list[float]],
 
     # Torso angle
     torso_ranges = get_optimal_ranges(
-        "Torso Angle (Shoulder-Hip-Horizontal)", mode)
+        "Torso Angle (Shoulder-Hip-Horizontal)", mode, angle_specs)
     torso_range = torso_ranges[0] if torso_ranges else None
 
     # Elbow angle
     elbow_ranges = get_optimal_ranges(
-        "Elbow Angle (Shoulder-Elbow-Wrist)", mode)
+        "Elbow Angle (Shoulder-Elbow-Wrist)", mode, angle_specs)
     elbow_range = elbow_ranges[0] if elbow_ranges else None
 
     # Hip angle (only for aeros)
-    hip_ranges = get_optimal_ranges("Hip Angle (Shoulder-Hip-Knee)", mode)
+    hip_ranges = get_optimal_ranges(
+        "Hip Angle (Shoulder-Hip-Knee)", mode, angle_specs)
     hip_range = hip_ranges[0] if hip_ranges else None
 
     # 1. Saddle Height (Knee Bottom)
@@ -58,12 +60,14 @@ def get_bike_fit_recommendations(angles_data: dict[str, list[float]],
         if avg_knee_angle_peaks_high < knee_bottom_range[0]:
             recommendations.append(
                 f"• Saddle might be TOO LOW. Raise saddle height. (Optimal: {knee_bottom_range[0]}-{knee_bottom_range[1]}°)")
-            recommendations.append(f"• Maybe try: {calculate_seat_height_adjustment(current_angle=avg_knee_angle_peaks_high, next_optimal_angle=knee_bottom_range[0], sensitivity_factor=seat_height_sensitive_factor)} cm higher saddle.")
+            recommendations.append(
+                f"• Maybe try: {calculate_seat_height_adjustment(current_angle=avg_knee_angle_peaks_high, next_optimal_angle=knee_bottom_range[0], sensitivity_factor=seat_height_sensitive_factor)} cm higher saddle.")
         elif avg_knee_angle_peaks_high > knee_bottom_range[1]:
             recommendations.append(
                 f"• Saddle might be TOO HIGH. Lower saddle height. (Optimal: {knee_bottom_range[0]}-{knee_bottom_range[1]}°)")
             # calculate_seat_height_adjustment(current_angle=knee_bottom_range[1], optimal_range=knee_bottom_range, sensitivity_factor=seat_height_sensitive_factor)
-            recommendations.append(f"• Maybe try: {calculate_seat_height_adjustment(current_angle=avg_knee_angle_peaks_high, next_optimal_angle=knee_bottom_range[1], sensitivity_factor=seat_height_sensitive_factor)} cm lower saddle.")
+            recommendations.append(
+                f"• Maybe try: {calculate_seat_height_adjustment(current_angle=avg_knee_angle_peaks_high, next_optimal_angle=knee_bottom_range[1], sensitivity_factor=seat_height_sensitive_factor)} cm lower saddle.")
         else:
             recommendations.append(
                 f"• Knee extension (bottom): Within optimal range. ({knee_bottom_range[0]}-{knee_bottom_range[1]}°)")
@@ -129,6 +133,22 @@ def get_bike_fit_recommendations(angles_data: dict[str, list[float]],
     else:
         recommendations.append(
             "Hip angle analysis not applicable for current mode.")
+
+    # 6. KOPS Analysis
+    if kops_value is not None:
+        recommendations.append(
+            f"KOPS horizontal distance (at max right foot X): {kops_value:.2f} pixels")
+        if kops_value < 0:
+            recommendations.append(
+                "• Negative value: Knee is in front of estimated pedal spindle (foot index).")
+        elif kops_value > 0:
+            recommendations.append(
+                "• Positive value: Knee is behind estimated pedal spindle (foot index).")
+        else:
+            recommendations.append(
+                "• KOPS value is zero: Knee is aligned with estimated pedal spindle (foot index).")
+    else:
+        recommendations.append("KOPS analysis not performed or failed.")
 
     # General advice
     recommendations.append("\n--- General Advice ---")

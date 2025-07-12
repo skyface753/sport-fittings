@@ -11,6 +11,7 @@ class KOPS_Point(Enum):
     foot_index = "foot_index"
     ankle = "ankle"
     ankle_vs_index = "ankle_vs_index"
+    heel_3_4_index = "heel_3_4_index"  # 3/4 of the way from heel to foot_index
 
 
 def calculate_kops_and_get_frame_user_idea(all_landmarks: AllLandmarks, video_path: str, foot_point_to_use: KOPS_Point) -> dict:
@@ -25,7 +26,7 @@ def calculate_kops_and_get_frame_user_idea(all_landmarks: AllLandmarks, video_pa
 
     Returns:
         A dictionary containing:
-        - 'kops_value': The KOPS horizontal distance for the identified frame.
+        - 'kops_value': The KOPS horizontal distance for the identified frame. (Positive means knee is behind the pedal spindle, negative means knee is forward.)
         - 'identified_frame_index': Index of the frame where right_foot_index has max X.
         - 'best_kops_frame_image': The image of the identified frame with drawn landmarks and lines.
     """
@@ -56,6 +57,11 @@ def calculate_kops_and_get_frame_user_idea(all_landmarks: AllLandmarks, video_pa
             b = frame_lm_at_max_foot_x.right_foot_index
             c = a + b
             reference_point = Point(c.x / 2, c.y / 2)
+        elif foot_point_to_use == KOPS_Point.heel_3_4_index:
+            a = frame_lm_at_max_foot_x.right_heel
+            b = frame_lm_at_max_foot_x.right_foot_index
+            c = a + b
+            reference_point = Point(c.x * 0.75, c.y * 0.75)
 
         if knee_point and reference_point:
             kops_value = reference_point.x - knee_point.x
@@ -68,73 +74,50 @@ def calculate_kops_and_get_frame_user_idea(all_landmarks: AllLandmarks, video_pa
                     reference_point.x), int(reference_point.y)
                 # Green line for knee
                 cv2.line(image, (knee_x, 0),
-                         (knee_x, image.shape[0]), (0, 255, 0), 2)
-                # Blue line for pedal spindle
+                         (knee_x, image.shape[0]), (0, 255, 0), 2)  # RGB: (0, 255, 0) for green
+                # Red line for pedal spindle
                 cv2.line(image, (ankle_x, 0),
-                         (ankle_x, image.shape[0]), (255, 0, 0), 2)
+                         (ankle_x, image.shape[0]), (255, 0, 0), 2)  # RGB: (255, 0, 0) for red
                 # Draw horizontal line connecting the two vertical lines at a mid-point
                 line_y_level = min(knee_y, ankle_y) - 30
                 if line_y_level < 0:
                     # Fallback if too high
                     line_y_level = max(knee_y, ankle_y) + 30
-                # Yellow line for distance
+                # Blue line for distance
                 cv2.line(image, (knee_x, line_y_level),
-                         (ankle_x, line_y_level), (0, 255, 255), 2)
-                cv2.putText(image, f"KOPS: {kops_value:.2f} px", (min(knee_x, ankle_x), line_y_level - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
+                         (ankle_x, line_y_level), (0, 0, 255), 2)  # RGB: (0, 0, 255) for blue
+                # Dynamically adjust font scale based on image height
+                font_scale = max(0.7, image.shape[0] / 700.0)
+                legend_font_scale = max(0.5, image.shape[0] / 1400.0)
+
+                cv2.putText(
+                    image,
+                    f"KOPS: {kops_value:.2f} px",
+                    (min(knee_x, ankle_x), line_y_level - int(10 * font_scale)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    font_scale,
+                    (255, 255, 255),
+                    2,
+                    cv2.LINE_AA
+                )
+                # Add legend, e.g., "Green: Knee, Blue: Pedal Spindle, Yellow: KOPS Distance"
+                cv2.putText(
+                    image,
+                    "Green: Knee, Red: Pedal Spindle, Blue: KOPS Distance",
+                    (10, image.shape[0] - int(10 * legend_font_scale)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    legend_font_scale,
+                    (255, 255, 255),
+                    1,
+                    cv2.LINE_AA
+                )
+                # Add colored points for knee and reference point
+                cv2.circle(image, (knee_x, knee_y), 5,
+                           (0, 255, 0), -1)  # Green for knee
+                # Red for reference point
+                cv2.circle(image, (ankle_x, ankle_y), 5, (255, 0, 0), -1)
+                # Save the image for output
                 best_kops_frame_image = image
-
-            # if image is not None:
-            #     # Re-process with MediaPipe to get results for drawing (using static_image_mode for efficiency)
-            #     with mp_pose.Pose(static_image_mode=True, model_complexity=2) as pose_static:
-            #         # MediaPipe expects BGR, convert back if needed for drawing tools
-            #         image_bgr_for_mp = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-            #         image_bgr_for_mp.flags.writeable = False
-            #         results_static = pose_static.process(image_bgr_for_mp)
-
-            #         if results_static.pose_landmarks:
-            #             # , cv2.COLOR_RGB2BGR) # For drawing, ensure it's modifiable BGR
-            #             image_to_draw = image_bgr_for_mp
-            #             image_to_draw.flags.writeable = True
-
-            #             # Draw landmarks
-            #             mp_drawing.draw_landmarks(
-            #                 image_to_draw, results_static.pose_landmarks, mp_pose.POSE_CONNECTIONS)
-
-            #             # Draw KOPS lines
-            #             knee_x, knee_y = int(knee_point.x), int(knee_point.y)
-            #             ankle_x, ankle_y = int(
-            #                 reference_point.x), int(reference_point.y)
-
-            #             # Draw vertical line from knee
-            #             # Green line for knee
-            #             cv2.line(image_to_draw, (knee_x, 0),
-            #                      (knee_x, VIDEO_HEIGHT), (0, 255, 0), 2)
-            #             # Draw vertical line from ankle (pedal spindle proxy)
-            #             # Blue line for pedal spindle
-            #             cv2.line(image_to_draw, (ankle_x, 0),
-            #                      (ankle_x, VIDEO_HEIGHT), (255, 0, 0), 2)
-
-            #             # Draw horizontal line connecting the two vertical lines at a mid-point
-            #             # using a vertical level to ensure line is straight
-            #             # Adjust y for visibility
-            #             line_y_level = min(knee_y, ankle_y) - 30
-            #             if line_y_level < 0:
-            #                 # Fallback if too high
-            #                 line_y_level = max(knee_y, ankle_y) + 30
-
-            #             # Yellow line for distance
-            #             cv2.line(image_to_draw, (knee_x, line_y_level),
-            #                      (ankle_x, line_y_level), (0, 255, 255), 2)
-
-            #             # Put text for KOPS value
-            #             text_pos = (min(knee_x, ankle_x), line_y_level - 10)
-            #             cv2.putText(image_to_draw, f"KOPS: {kops_value:.2f} px", text_pos,
-            #                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
-
-            #             # Convert back to RGB for matplotlib
-            #             best_kops_frame_image = cv2.cvtColor(
-            #                 image_to_draw, cv2.COLOR_BGR2RGB)
 
     results = {
         'kops_value': kops_value,
@@ -145,7 +128,7 @@ def calculate_kops_and_get_frame_user_idea(all_landmarks: AllLandmarks, video_pa
     return results
 
 
-def print_kops_analysis_results(kops_analysis_results: dict, kops_point: KOPS_Point):
+def print_kops_analysis_results(kops_analysis_results: dict, kops_point: KOPS_Point, output_dir: str):
     print("\n--- KOPS Analysis (User's Idea) ---")
     kops_point_v = kops_point.value
     if kops_analysis_results['kops_value'] is not None:
@@ -160,12 +143,19 @@ def print_kops_analysis_results(kops_analysis_results: dict, kops_point: KOPS_Po
             print(
                 f"\nDisplaying frame where right foot ({kops_point_v}) is furthest to the right (Frame {kops_analysis_results['identified_frame_index']})")
             if kops_analysis_results['best_kops_frame_image'] is not None:
-                plt.figure(figsize=(10, 8))
-                plt.imshow(kops_analysis_results['best_kops_frame_image'])
-                plt.title(
-                    f"KOPS Visualization (Frame {kops_analysis_results['identified_frame_index']})")
-                plt.axis('off')
-                plt.show()
+                img = kops_analysis_results['best_kops_frame_image']
+                # Convert
+                # CV2 uses BGR format
+                img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                cv2.imwrite(f"{output_dir}/kops_visualization_{kops_point_v}.png",
+                            img)
+                # plt.figure(figsize=(10, 8))
+                # plt.imshow(kops_analysis_results['best_kops_frame_image'])
+                # plt.title(
+                #     f"KOPS Visualization (Frame {kops_analysis_results['identified_frame_index']})")
+                # plt.axis('off')
+                # plt.savefig(f"{output_dir}/kops_visualization_{kops_point_v}.png",
+                #             bbox_inches='tight', pad_inches=0.1)
             else:
                 print(
                     "Failed to retrieve or process the identified frame for visualization.")

@@ -1,5 +1,4 @@
 
-from src.optimal_angles import ANGLE_SPECS
 from src.models import AllLandmarks
 from collections import defaultdict
 from scipy.signal import find_peaks
@@ -30,11 +29,13 @@ def calculate_angle(a: Point, b: Point, c: Point) -> float:
     angle_deg = np.degrees(angle_rad)
     return angle_deg
 
+
 def calculate_seat_height_adjustment(
     current_angle: float,
     # optimal_range: tuple[float, float],
     next_optimal_angle: float,
-    sensitivity_factor: float = 0.5 # Degrees per cm of seat height change (example value)
+    # Degrees per cm of seat height change (example value)
+    sensitivity_factor: float = 0.5
 ) -> float:
     """
     Calculates the required seat height adjustment (in cm) based on the current angle
@@ -72,26 +73,35 @@ def calculate_seat_height_adjustment(
     return adjustment
 
 
-
 def print_angle_stats(angles: list[float], angle_name: str):
     """Prints statistics for a list of angles."""
+    angle_stats = []
     if not angles:
-        print(f"No {angle_name} angles calculated.")
+        # print(f"No {angle_name} angles calculated.")
+        angle_stats.append(f"No {angle_name} angles calculated.")
         return
-    print(f"\n--- {angle_name} Angle Statistics ---")
-    print(f"Min angle: {min(angles):.2f}°")
-    print(f"Max angle: {max(angles):.2f}°")
-    print(f"Mean angle: {np.mean(angles):.2f}°")
-    print(f"Median angle: {np.median(angles):.2f}°")
-    print(f"Standard deviation: {np.std(angles):.2f}°")
-    print("-" * (len(angle_name) + 22))
+    # print(f"\n--- {angle_name} Angle Statistics ---")
+    # print(f"Min angle: {min(angles):.2f}°")
+    # print(f"Max angle: {max(angles):.2f}°")
+    # print(f"Mean angle: {np.mean(angles):.2f}°")
+    # print(f"Median angle: {np.median(angles):.2f}°")
+    # print(f"Standard deviation: {np.std(angles):.2f}°")
+    # print("-" * (len(angle_name) + 22))
+    angle_stats.append(f"{angle_name} Angle Statistics:")
+    angle_stats.append(f"Min: {min(angles):.2f}°")
+    angle_stats.append(f"Max: {max(angles):.2f}°")
+    angle_stats.append(f"Mean: {np.mean(angles):.2f}°")
+    angle_stats.append(f"Median: {np.median(angles):.2f}°")
+    angle_stats.append(f"Std Dev: {np.std(angles):.2f}°")
+    angle_stats.append("-" * (len(angle_name) + 22))
+    return angle_stats
 
 
-def calc_angles(all_frames_landmarks: AllLandmarks, mode: str) -> dict[str, list[float]]:
+def calc_angles(all_frames_landmarks: AllLandmarks, mode: str, angle_specs) -> dict[str, list[float]]:
     dynamic_angles = defaultdict(list)
 
     for frame_lm in all_frames_landmarks.frames_landmarks:
-        for spec in ANGLE_SPECS:
+        for spec in angle_specs:
             if mode not in spec.modes:
                 continue  # skip angles not relevant for this mode
 
@@ -145,39 +155,50 @@ def calc_peaks(dynamic_angles: dict[str, list[float]], angle_name="Knee Angle (H
 
 def angles_summary(dynamic_angles: dict[str, list[float]], avg_knee_angle_peaks_high: float,
                    avg_knee_angle_peaks_low: float):
-    print("\n--- Cycling Angle Summary ---")
+    """
+    Generates a summary of cycling angles as a list of formatted strings.
+
+    Args:
+        dynamic_angles: A dictionary where keys are angle labels (strings) and
+                        values are lists of angle measurements (floats).
+        avg_knee_angle_peaks_high: The average of the high peaks of the knee angle.
+        avg_knee_angle_peaks_low: The average of the low peaks of the knee angle.
+
+    Returns:
+        A list of strings, each representing a line of the cycling angle summary.
+    """
+    summary_lines = []
+    summary_lines.append("\n--- Cycling Angle Summary ---")
 
     # Calculate average angles (handle cases where angle list might be empty)
-    avg_shoulder_angle = np.mean(dynamic_angles.get("Shoulder Angle (Hip-Shoulder-Elbow)", [
-        0])) if dynamic_angles.get("Shoulder Angle (Hip-Shoulder-Elbow)") else 0
-    avg_elbow_angle = np.mean(dynamic_angles.get("Elbow Angle (Shoulder-Elbow-Wrist)",
-                                                 [0])) if dynamic_angles.get("Elbow Angle (Shoulder-Elbow-Wrist)") else 0
-    avg_torso_angle = np.mean(dynamic_angles.get("Torso Angle (Shoulder-Hip-Horizontal)",
-                                                 [0])) if dynamic_angles.get("Torso Angle (Shoulder-Hip-Horizontal)") else 0
-    avg_knee_angle = np.mean(dynamic_angles.get("Knee Angle (Hip-Knee-Ankle)",
-                                                [0])) if dynamic_angles.get("Knee Angle (Hip-Knee-Ankle)") else 0
-    avg_hip_angle = np.mean(dynamic_angles.get("Hip Angle (Shoulder-Hip-Knee)",
-                                               [0])) if dynamic_angles.get("Hip Angle (Shoulder-Hip-Knee)") else 0
-    # avg_ankle_angle = np.mean(dynamic_angles.get("Ankle Angle (Knee-Ankle-Foot Index)",
-    #                           [0])) if dynamic_angles.get("Ankle Angle (Knee-Ankle-Foot Index)") else 0
+    # Using .get with a default empty list and then checking if it's empty is more robust
+    shoulder_angles = dynamic_angles.get(
+        "Shoulder Angle (Hip-Shoulder-Elbow)", [])
+    avg_shoulder_angle = np.mean(shoulder_angles) if shoulder_angles else 0
 
-    # Get specific knee angles from identified frames
-    # knee_angles_list = dynamic_angles.get("Knee Angle (Hip-Knee-Ankle)", [])
-    # knee_angle_bottom = knee_angles_list[foot_bottom_index_mp] if 0 <= foot_bottom_index_mp < len(
-    #     knee_angles_list) else float('nan')
-    # knee_angle_top = knee_angles_list[foot_top_index_mp] if 0 <= foot_top_index_mp < len(
-    #     knee_angles_list) else float('nan')
+    elbow_angles = dynamic_angles.get("Elbow Angle (Shoulder-Elbow-Wrist)", [])
+    avg_elbow_angle = np.mean(elbow_angles) if elbow_angles else 0
 
-    # Avg of the knee angles peaks
+    torso_angles = dynamic_angles.get(
+        "Torso Angle (Shoulder-Hip-Horizontal)", [])
+    avg_torso_angle = np.mean(torso_angles) if torso_angles else 0
 
-    # print(f'Knee Angle (Bottom of Stroke): {knee_angle_bottom:.2f}°')
-    # print(f'Knee Angle (Top of Stroke): {knee_angle_top:.2f}°')
-    print(f'Knee Angle (Avg): {avg_knee_angle:.2f}°')
-    print(f'Knee Angle Peaks (High): {avg_knee_angle_peaks_high:.2f}°')
-    print(f'Knee Angle Peaks (Low): {avg_knee_angle_peaks_low:.2f}°')
-    print(f'Shoulder Angle (Avg): {avg_shoulder_angle:.2f}°')
-    print(f'Elbow Angle (Avg): {avg_elbow_angle:.2f}°')
-    print(f'Torso Angle (Avg): {avg_torso_angle:.2f}°')
-    print(f'Hip Angle (Avg): {avg_hip_angle:.2f}°')
-    # print(f'Ankle Angle (Avg): {avg_ankle_angle:.2f}°')
-    print("-----------------------------\n")
+    knee_angles = dynamic_angles.get("Knee Angle (Hip-Knee-Ankle)", [])
+    avg_knee_angle = np.mean(knee_angles) if knee_angles else 0
+
+    hip_angles = dynamic_angles.get("Hip Angle (Shoulder-Hip-Knee)", [])
+    avg_hip_angle = np.mean(hip_angles) if hip_angles else 0
+
+    # Populate the summary lines
+    summary_lines.append(f'Knee Angle (Avg): {avg_knee_angle:.2f}°')
+    summary_lines.append(
+        f'Knee Angle Peaks (High): {avg_knee_angle_peaks_high:.2f}°')
+    summary_lines.append(
+        f'Knee Angle Peaks (Low): {avg_knee_angle_peaks_low:.2f}°')
+    summary_lines.append(f'Shoulder Angle (Avg): {avg_shoulder_angle:.2f}°')
+    summary_lines.append(f'Elbow Angle (Avg): {avg_elbow_angle:.2f}°')
+    summary_lines.append(f'Torso Angle (Avg): {avg_torso_angle:.2f}°')
+    summary_lines.append(f'Hip Angle (Avg): {avg_hip_angle:.2f}°')
+    summary_lines.append("-----------------------------\n")
+
+    return summary_lines
