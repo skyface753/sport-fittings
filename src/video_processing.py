@@ -258,38 +258,6 @@ def process_video_with_running_mode(video_path: str, video_length: int, video_du
 
 def process_single_frame(frame, timestamp_ms, landmarker, image_width, image_height, all_frames_landmarks, out_writer: str = None):
 
-    # all_frames_landmarks = AllLandmarks()
-    # all_frames_landmarks.clear()
-
-    # cap = cv2.VideoCapture(video_path)
-    # if not cap.isOpened():
-    #     raise TypeError(f"Error opening video stream or file: {video_path}")
-
-    # i = 0
-    # j = 0
-    # first_image = None
-    # first_frame_landmarks = None
-
-    # if video_duration <= 0 or video_duration is None:
-    #     video_duration = video_length
-
-    # print("Processing video with PoseLandmarker (VIDEO mode)...")
-    # while cap.isOpened():
-    #     ret, frame = cap.read()
-    #     if not ret:
-    #         break
-    #     i += 1
-    #     CURR_PERCENTAGE = i / video_length * 100
-    #     if i % 100 == 0:
-    #         print(
-    #             f"Processing frame {i}/{video_length}: ({CURR_PERCENTAGE:.2f}%)")
-
-    #     if i > video_length - 2 * video_fps and video_length > 2 * video_fps:
-    #         break
-    #     if j > (video_fps * video_duration):
-    #         break
-    #     j += 1
-
     # Convert to mediapipe Image format
     # mp_image = mp.Image(
     # image_format=mp.ImageFormat.SRGB, data=cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
@@ -305,17 +273,6 @@ def process_single_frame(frame, timestamp_ms, landmarker, image_width, image_hei
     else:
         all_frames_landmarks.append_empty_frame()
 
-        # if first_image is None:
-        #     annotated_image = frame.copy()
-        #     for lm in result.pose_landmarks:
-        #         for point in lm:
-        #             cx = int(point.x * image_width)
-        #             cy = int(point.y * image_height)
-        #             cv2.circle(annotated_image, (cx, cy),
-        #                        3, (0, 255, 0), -1)
-        #     first_image = annotated_image
-        #     first_frame_landmarks = frame_landmarks
-
     # Draw landmarks if output video is requested
     if out_writer:
         annotated_frame = frame.copy()
@@ -323,14 +280,7 @@ def process_single_frame(frame, timestamp_ms, landmarker, image_width, image_hei
         #     annotated_frame, result, video_width, video_height)
         annotated_image = draw_landmarks_on_image(annotated_frame, result)
 
-        # for lm in result.pose_landmarks:
-        #     for point in lm:
-        #         cx = int(point.x * video_width)
-        #         cy = int(point.y * video_height)
-        #         cv2.circle(annotated_frame, (cx, cy), 2, (0, 255, 0), -1)
         out_writer.write(annotated_image)
-
-    # landmarker.close()
 
     return all_frames_landmarks, annotated_image
 
@@ -357,11 +307,10 @@ def get_video_stats(video_path):
 
 def process_video_from_file(video_path: str, landmarker, output_dir: str, process_duration: int, fitting_mode: str = "hood"):
 
-    all_frames_landmarks = AllLandmarks()
-    all_frames_landmarks.clear()
-
     video_length, video_fps, video_width, video_height = get_video_stats(
         video_path)
+    all_frames_landmarks = AllLandmarks(video_width, video_height)
+    all_frames_landmarks.clear()
 
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():

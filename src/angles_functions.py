@@ -141,6 +141,7 @@ def calc_angles(all_frames_landmarks: AllLandmarks, mode: str, angle_specs, body
             else:
                 print(f"Missing points for angle {spec.label} in frame. "
                       f"Points: {p1}, {p2}, {p3}")
+                dynamic_angles[spec.label].append(-1)
 
     return dynamic_angles
 

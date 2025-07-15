@@ -78,8 +78,12 @@ def calculate_kops_and_get_frame_user_idea(all_landmarks: AllLandmarks, all_vide
         #     reference_point = Point(c.x * 0.75, c.y * 0.75)
 
         if knee_point and reference_point:
-            kops_value = reference_point.x - knee_point.x
-
+            if body_side == "right":
+                kops_value = reference_point.x - knee_point.x
+            elif body_side == "left":
+                kops_value = knee_point.x - reference_point.x
+            else:
+                raise ValueError(f"Unknown body side: {body_side}")
             # Retrieve the image for visualization
             # image = get_image_at_index(video_path, identified_frame_index)
             image = all_video_frames[identified_frame_index] if identified_frame_index < len(

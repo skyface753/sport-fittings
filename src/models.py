@@ -41,7 +41,10 @@ class FrameLandmarks:
         self.right_ankle: Point = None
         self.right_foot_index: Point = None
         self.right_heel: Point = None
+        self.right_index: Point = None  # Index finger tip
+        self.right_pinky: Point = None  # Right pinky tip
         # Add left side for potential future use (e.g., bilateral analysis)
+        # ALSO ADD NEW POINTS TO THE mediapipe.py file
         self.left_wrist: Point = None
         self.left_elbow: Point = None
         self.left_shoulder: Point = None
@@ -50,6 +53,8 @@ class FrameLandmarks:
         self.left_ankle: Point = None
         self.left_foot_index: Point = None
         self.left_heel: Point = None
+        self.left_index: Point = None  # Index finger tip
+        self.left_pinky: Point = None  # Left pinky tip
 
     def from_gpu_to_cpu(self):
         """Converts all Point objects within this frame's landmarks from GPU to CPU."""
@@ -73,7 +78,9 @@ class FrameLandmarks:
 class AllLandmarks:
     """Stores a list of FrameLandmarks for all processed frames."""
 
-    def __init__(self):
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
         self.frames_landmarks: list[FrameLandmarks] = []
 
     def append_frame(self, frame_landmarks: FrameLandmarks):
@@ -106,6 +113,8 @@ class MPLandmark:
     RIGHT_ANKLE = mp.solutions.pose.PoseLandmark.RIGHT_ANKLE
     RIGHT_FOOT_INDEX = mp.solutions.pose.PoseLandmark.RIGHT_FOOT_INDEX
     RIGHT_HEEL = mp.solutions.pose.PoseLandmark.RIGHT_HEEL
+    RIGHT_INDEX = mp.solutions.pose.PoseLandmark.RIGHT_INDEX  # Index finger tip
+    RIGHT_PINKY = mp.solutions.pose.PoseLandmark.RIGHT_PINKY  # Right pinky tip
     # Add left side for completeness
     LEFT_WRIST = mp.solutions.pose.PoseLandmark.LEFT_WRIST
     LEFT_ELBOW = mp.solutions.pose.PoseLandmark.LEFT_ELBOW
@@ -115,3 +124,5 @@ class MPLandmark:
     LEFT_ANKLE = mp.solutions.pose.PoseLandmark.LEFT_ANKLE
     LEFT_FOOT_INDEX = mp.solutions.pose.PoseLandmark.LEFT_FOOT_INDEX
     LEFT_HEEL = mp.solutions.pose.PoseLandmark.LEFT_HEEL
+    LEFT_INDEX = mp.solutions.pose.PoseLandmark.LEFT_INDEX  # Index finger tip
+    LEFT_PINKY = mp.solutions.pose.PoseLandmark.LEFT_PINKY  # Left pinky tip

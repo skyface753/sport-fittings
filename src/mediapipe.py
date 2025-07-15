@@ -64,6 +64,10 @@ def extract_landmarks_mediapipe_from_result(result, image_width: int, image_heig
     frame_lm.right_ankle = get_point(MPLandmark.RIGHT_ANKLE)
     frame_lm.right_foot_index = get_point(MPLandmark.RIGHT_FOOT_INDEX)
     frame_lm.right_heel = get_point(MPLandmark.RIGHT_HEEL)
+    frame_lm.right_index = get_point(
+        MPLandmark.RIGHT_INDEX)  # Index finger tip
+    frame_lm.right_pinky = get_point(
+        MPLandmark.RIGHT_PINKY)  # Right pinky tip
 
     frame_lm.left_wrist = get_point(MPLandmark.LEFT_WRIST)
     frame_lm.left_elbow = get_point(MPLandmark.LEFT_ELBOW)
@@ -73,6 +77,9 @@ def extract_landmarks_mediapipe_from_result(result, image_width: int, image_heig
     frame_lm.left_ankle = get_point(MPLandmark.LEFT_ANKLE)
     frame_lm.left_foot_index = get_point(MPLandmark.LEFT_FOOT_INDEX)
     frame_lm.left_heel = get_point(MPLandmark.LEFT_HEEL)
+    frame_lm.left_index = get_point(MPLandmark.LEFT_INDEX)  # Index finger tip
+    frame_lm.left_pinky = get_point(
+        MPLandmark.LEFT_PINKY)  # Left pinky tip
 
     # Optional: Add left side if needed
     # frame_lm.left_wrist = get_point(MPLandmark.LEFT_WRIST)
