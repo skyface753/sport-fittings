@@ -25,19 +25,19 @@ def calc_peaks_means(max_knee_angles, min_knee_angles):
     return avg_knee_angle_peaks_high, avg_knee_angle_peaks_low
 
 
-def inspect_first_frame_landmarks(first_frame_landmarks_mp):
-    print("\n--- Inspecting First Frame Landmarks (MediaPipe) for Missing Points ---")
-    print(f"Nose: {first_frame_landmarks_mp.nose}")
-    print(f"Right Shoulder: {first_frame_landmarks_mp.right_shoulder}")
-    print(f"Right Elbow: {first_frame_landmarks_mp.right_elbow}")
-    print(f"Right Wrist: {first_frame_landmarks_mp.right_wrist}")
-    print(f"Right Hip: {first_frame_landmarks_mp.right_hip}")
-    print(f"Right Knee: {first_frame_landmarks_mp.right_knee}")
-    print(f"Right Ankle: {first_frame_landmarks_mp.right_ankle}")
-    # Crucial for ankle angle
-    print(f"Right Foot Index: {first_frame_landmarks_mp.right_foot_index}")
-    print(f"Right Heel: {first_frame_landmarks_mp.right_heel}")
-    print("----------------------------------------------------------------------")
+# def inspect_first_frame_landmarks(first_frame_landmarks_mp):
+#     print("\n--- Inspecting First Frame Landmarks (MediaPipe) for Missing Points ---")
+#     print(f"Nose: {first_frame_landmarks_mp.nose}")
+#     print(f"Right Shoulder: {first_frame_landmarks_mp.right_shoulder}")
+#     print(f"Right Elbow: {first_frame_landmarks_mp.right_elbow}")
+#     print(f"Right Wrist: {first_frame_landmarks_mp.right_wrist}")
+#     print(f"Right Hip: {first_frame_landmarks_mp.right_hip}")
+#     print(f"Right Knee: {first_frame_landmarks_mp.right_knee}")
+#     print(f"Right Ankle: {first_frame_landmarks_mp.right_ankle}")
+#     # Crucial for ankle angle
+#     print(f"Right Foot Index: {first_frame_landmarks_mp.right_foot_index}")
+#     print(f"Right Heel: {first_frame_landmarks_mp.right_heel}")
+#     print("----------------------------------------------------------------------")
 
 
 def get_video_stats(video_path):

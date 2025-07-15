@@ -12,7 +12,7 @@ class AngleSpec:
     modes: List[str]
 
 
-def load_angle_specs_from_json(filepath: str) -> List[AngleSpec]:
+def load_angle_specs_from_json(filepath: str, body_side: str = "right") -> List[AngleSpec]:
     with open(filepath, 'r') as f:
         data = json.load(f)
 
@@ -20,6 +20,9 @@ def load_angle_specs_from_json(filepath: str) -> List[AngleSpec]:
     for item in data:
         # Convert points list back to tuple if necessary, though dataclasses handles lists fine for Tuple hints
         item['points'] = tuple(item['points'])
+        # add the body side as the prefix to the points. expect for the horizontal_reference_point
+        item['points'] = tuple(
+            f"{body_side}_{point}" if point != "horizontal_reference_point" else point for point in item['points'])
         # Convert inner lists of optimal_ranges to tuples if strict Tuple[int, int] is needed,
         # otherwise List[List[int]] works with List[Tuple[int, int]] hint.
         # Here we assume List[Tuple[int, int]] so we convert the inner lists

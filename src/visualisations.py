@@ -21,40 +21,59 @@ angle_label_to_attrs = {
 }
 
 
-def plot_image_with_points(image, frame_landmarks: FrameLandmarks, output_dir: str, output_prefix="", with_foot_details=False):
-    """Plots an image with detected body landmarks."""
-    plt.figure(figsize=(16, 10))  # to set the figure size
+def plot_image_with_points(image, frame_landmarks: FrameLandmarks, output_dir: str, output_prefix="", with_foot_details=False, body_side="right"):
+    """
+    Plots an image with detected body landmarks for a specified side.
+
+    Args:
+        image: The image data to plot.
+        frame_landmarks (FrameLandmarks): An object containing the detected landmarks.
+        output_dir (str): The directory to save the output image.
+        output_prefix (str, optional): A prefix for the output filename. Defaults to "".
+        with_foot_details (bool, optional): Whether to plot detailed foot points. Defaults to False.
+        body_side (str, optional): The side of the body to plot ("right" or "left"). Defaults to "right".
+    """
+    plt.figure(figsize=(16, 10))
     plt.imshow(image)
 
-    marker_size = 5  # Increased marker size for better visibility
+    marker_size = 5
 
-    # List of tuples: (landmark_point_attribute, color, marker_style)
-    # Define connections for visual lines
-    connections = [
-        ("right_shoulder", "right_elbow"),
-        ("right_elbow", "right_wrist"),
-        ("right_shoulder", "right_hip"),
-        ("right_hip", "right_knee"),
-        ("right_knee", "right_ankle"),
+    # Define common body parts and their colors/markers
+    body_parts_data = {
+        "wrist": ('r', 'o'),
+        "elbow": ('g', 'o'),
+        "shoulder": ('b', 'o'),
+        "hip": ('c', 'o'),
+        "knee": ('m', 'o'),
+        "ankle": ('y', 'o'),
+    }
+
+    # Define connections for visual lines, now generic
+    connections_template = [
+        ("shoulder", "elbow"),
+        ("elbow", "wrist"),
+        ("shoulder", "hip"),
+        ("hip", "knee"),
+        ("knee", "ankle"),
     ]
 
-    points_to_plot = [
-        (frame_landmarks.nose, 'r', 'o', "Nose"),
-        (frame_landmarks.right_wrist, 'r', 'o', "Right Wrist"),
-        (frame_landmarks.right_elbow, 'g', 'o', "Right Elbow"),
-        (frame_landmarks.right_shoulder, 'b', 'o', "Right Shoulder"),
-        (frame_landmarks.right_hip, 'c', 'o', "Right Hip"),
-        (frame_landmarks.right_knee, 'm', 'o', "Right Knee"),
-        (frame_landmarks.right_ankle, 'y', 'o', "Right Ankle"),
-    ]
+    # Plot nose if it exists
+    if frame_landmarks.nose:
+        plt.plot(frame_landmarks.nose.x, frame_landmarks.nose.y, 'r', linestyle="None",
+                 marker="o", markersize=marker_size, label="Nose")
 
-    for p, color, marker, label in points_to_plot:
+    # Plot points for the specified side
+    for part, (color, marker) in body_parts_data.items():
+        point_attr_name = f"{body_side}_{part}"
+        p = getattr(frame_landmarks, point_attr_name, None)
         if p:
             plt.plot(p.x, p.y, color=color, linestyle="None",
-                     marker=marker, markersize=marker_size, label=label)
+                     marker=marker, markersize=marker_size, label=f"{body_side.capitalize()} {part.replace('_', ' ').title()}")
 
-    # Draw connections
-    for p1_attr, p2_attr in connections:
+    # Draw connections for the specified side
+    for p1_part, p2_part in connections_template:
+        p1_attr = f"{body_side}_{p1_part}"
+        p2_attr = f"{body_side}_{p2_part}"
         p1 = getattr(frame_landmarks, p1_attr, None)
         p2 = getattr(frame_landmarks, p2_attr, None)
         if p1 and p2:
@@ -62,24 +81,30 @@ def plot_image_with_points(image, frame_landmarks: FrameLandmarks, output_dir: s
                      color='lightgray', linewidth=1)
 
     if with_foot_details:
-        if frame_landmarks.right_foot_index:
-            plt.plot(frame_landmarks.right_foot_index.x, frame_landmarks.right_foot_index.y, 'darkblue',
-                     linestyle="None", marker="o", markersize=marker_size, label="Right Foot Index")
-        if frame_landmarks.right_heel:
-            plt.plot(frame_landmarks.right_heel.x, frame_landmarks.right_heel.y, 'darkgreen',
-                     linestyle="None", marker="o", markersize=marker_size, label="Right Heel")
-        if frame_landmarks.right_foot_index and frame_landmarks.right_heel:
-            plt.plot([frame_landmarks.right_foot_index.x, frame_landmarks.right_heel.x],
-                     [frame_landmarks.right_foot_index.y,
-                         frame_landmarks.right_heel.y],
+        foot_index_attr = f"{body_side}_foot_index"
+        heel_attr = f"{body_side}_heel"
+
+        foot_index_p = getattr(frame_landmarks, foot_index_attr, None)
+        heel_p = getattr(frame_landmarks, heel_attr, None)
+
+        if foot_index_p:
+            plt.plot(foot_index_p.x, foot_index_p.y, 'darkblue',
+                     linestyle="None", marker="o", markersize=marker_size, label=f"{body_side.capitalize()} Foot Index")
+        if heel_p:
+            plt.plot(heel_p.x, heel_p.y, 'darkgreen',
+                     linestyle="None", marker="o", markersize=marker_size, label=f"{body_side.capitalize()} Heel")
+        if foot_index_p and heel_p:
+            plt.plot([foot_index_p.x, heel_p.x],
+                     [foot_index_p.y, heel_p.y],
                      color='lightgray', linewidth=1)
 
     plt.legend()
     plt.grid(True)
-    plt.title("Keypoints Detection")
+    plt.title(f"Keypoints Detection - {body_side.capitalize()} Side")
     image_path = os.path.join(
-        output_dir, f"{output_prefix}keypoints_detection.png")
+        output_dir, f"{output_prefix}{body_side}_keypoints_detection.png")
     plt.savefig(image_path, bbox_inches='tight', pad_inches=0.1)
+    plt.close()  # Close the plot to free up memory
 
 
 # def get_image_at_index(video_path: str, index: int):
@@ -352,69 +377,88 @@ def draw_angle_on_image_precise(image, p1: Point, p_vertex: Point, p2: Point, an
     return image
 
 
-def show_summarized_image(image, frame_landmarks: FrameLandmarks, output_dir):
+def show_summarized_image(image, frame_landmarks: FrameLandmarks, output_dir: str, body_side: str = "right"):
     """
     Shows a summarized image with average angles, specific knee angles, and bike fit recommendations,
-    and draws the angles on the image.
+    and draws the angles on the image for the specified body side.
     """
     summary_image = image.copy()
 
+    # Define landmark attribute names dynamically based on body_side
+    hip_lm_attr = f"{body_side}_hip"
+    knee_lm_attr = f"{body_side}_knee"
+    ankle_lm_attr = f"{body_side}_ankle"
+    shoulder_lm_attr = f"{body_side}_shoulder"
+    elbow_lm_attr = f"{body_side}_elbow"
+    wrist_lm_attr = f"{body_side}_wrist"
+    foot_index_lm_attr = f"{body_side}_foot_index"
+
+    # Retrieve landmarks using getattr
+    hip = getattr(frame_landmarks, hip_lm_attr, None)
+    knee = getattr(frame_landmarks, knee_lm_attr, None)
+    ankle = getattr(frame_landmarks, ankle_lm_attr, None)
+    shoulder = getattr(frame_landmarks, shoulder_lm_attr, None)
+    elbow = getattr(frame_landmarks, elbow_lm_attr, None)
+    wrist = getattr(frame_landmarks, wrist_lm_attr, None)
+    foot_index = getattr(frame_landmarks, foot_index_lm_attr, None)
+
     # --- Draw the angles on the image ---
     # Draw Knee Angle (Hip-Knee-Ankle)
-    if frame_landmarks.right_hip and frame_landmarks.right_knee and frame_landmarks.right_ankle:
-        knee_angle_val = calculate_angle(
-            frame_landmarks.right_hip, frame_landmarks.right_knee, frame_landmarks.right_ankle)
+    if hip and knee and ankle:
+        knee_angle_val = calculate_angle(hip, knee, ankle)
         summary_image = draw_angle_on_image_precise(summary_image,
-                                                    frame_landmarks.right_hip,
-                                                    frame_landmarks.right_knee,
-                                                    frame_landmarks.right_ankle,
+                                                    hip,
+                                                    knee,
+                                                    ankle,
                                                     knee_angle_val,
                                                     color=(0, 255, 0), arc_radius=80)  # Green
 
     # Draw Elbow Angle (Shoulder-Elbow-Wrist)
-    if frame_landmarks.right_shoulder and frame_landmarks.right_elbow and frame_landmarks.right_wrist:
-        elbow_angle_val = calculate_angle(
-            frame_landmarks.right_shoulder, frame_landmarks.right_elbow, frame_landmarks.right_wrist)
+    if shoulder and elbow and wrist:
+        elbow_angle_val = calculate_angle(shoulder, elbow, wrist)
         summary_image = draw_angle_on_image_precise(summary_image,
-                                                    frame_landmarks.right_wrist,
-                                                    frame_landmarks.right_elbow,
-                                                    frame_landmarks.right_shoulder,
+                                                    wrist,
+                                                    elbow,
+                                                    shoulder,
                                                     elbow_angle_val,
                                                     color=(255, 0, 255), arc_radius=60)  # Magenta
 
     # Draw Torso Angle (Shoulder-Hip-Horizontal)
-    if frame_landmarks.right_hip and frame_landmarks.right_shoulder:
-        horizontal_point = Point(
-            frame_landmarks.right_hip.x + 100, frame_landmarks.right_hip.y)
-        torso_angle_val = calculate_angle(
-            frame_landmarks.right_shoulder, frame_landmarks.right_hip, horizontal_point)
+    if hip and shoulder:
+        # Define horizontal point relative to the hip for the current side
+        # Assuming horizontal line extends positively (to the right of the image)
+        horizontal_point = Point(hip.x + 100, hip.y)
+
+        torso_angle_val = calculate_angle(shoulder, hip, horizontal_point)
         summary_image = draw_angle_on_image_precise(summary_image,
                                                     horizontal_point,
-                                                    frame_landmarks.right_hip,
-                                                    frame_landmarks.right_shoulder,
+                                                    hip,
+                                                    shoulder,
                                                     torso_angle_val,
                                                     color=(255, 255, 0), arc_radius=100)  # Yellow
 
     # Draw Ankle Angle (Knee-Ankle-Foot Index)
-    if frame_landmarks.right_knee and frame_landmarks.right_ankle and frame_landmarks.right_foot_index:
-        ankle_angle_val = calculate_angle(
-            frame_landmarks.right_knee, frame_landmarks.right_ankle, frame_landmarks.right_foot_index)
+    if knee and ankle and foot_index:
+        ankle_angle_val = calculate_angle(knee, ankle, foot_index)
         summary_image = draw_angle_on_image_precise(summary_image,
-                                                    frame_landmarks.right_knee,
-                                                    frame_landmarks.right_ankle,
-                                                    frame_landmarks.right_foot_index,
+                                                    knee,
+                                                    ankle,
+                                                    foot_index,
                                                     ankle_angle_val,
                                                     color=(0, 255, 255), arc_radius=70)  # Cyan
 
     plt.figure(figsize=(16, 10))
     plt.imshow(summary_image)
-    plt.title(f"Bike Fitting Summary")
+    plt.title(f"Bike Fitting Summary - {body_side.capitalize()} Side")
     plt.axis('off')
-    plt.savefig(os.path.join(output_dir, "cycling_summary.png"),
+    plt.savefig(os.path.join(output_dir, f"cycling_summary_{body_side}.png"),
                 bbox_inches='tight', pad_inches=0.1)
+    plt.close()  # Close the plot to free up memory
 
+    # Ensure the returned image is in BGR format if it's going to be used by OpenCV downstream
     image_bgr = cv2.cvtColor(summary_image, cv2.COLOR_RGB2BGR)
     return image_bgr
+
     cv2.imwrite(f'cycling_summary.png', image_bgr)
     print(f"Summary image saved as cycling_summary.png")
 
@@ -463,7 +507,7 @@ def show_top_and_bottom_knee_extension(dynamic_angles: dict[str, list[float]], a
 #     return None, None
 
 
-def show_video_with_landmarks(all_video_frames, index: int, landmarks: AllLandmarks, output_dir, output_prefix="", with_foot_details=False):
+def show_video_with_landmarks(all_video_frames, index: int, landmarks: AllLandmarks, output_dir, output_prefix="", with_foot_details=False, body_side="right"):
     """Displays a specific frame from the video with landmarks."""
     # frame_rgb, frame_landmarks = get_video_at_index(
     #     video_path, index, landmarks)
@@ -473,6 +517,6 @@ def show_video_with_landmarks(all_video_frames, index: int, landmarks: AllLandma
         landmarks.frames_landmarks) else None
     if frame_rgb is not None and frame_landmarks is not None:
         plot_image_with_points(frame_rgb, frame_landmarks,
-                               output_dir, output_prefix, with_foot_details)
+                               output_dir, output_prefix, with_foot_details, body_side=body_side)
     else:
         print(f"Could not retrieve or display frame at index {index}")

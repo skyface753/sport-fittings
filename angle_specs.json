@@ -2,7 +2,7 @@
   {
     "label": "Knee Angle (Hip-Knee-Ankle)",
     "name": "knee_angle",
-    "points": ["right_hip", "right_knee", "right_ankle"],
+    "points": ["hip", "knee", "ankle"],
     "optimal_ranges": {
       "hood": [
         [140, 150],
@@ -22,7 +22,7 @@
   {
     "label": "Torso Angle (Shoulder-Hip-Horizontal)",
     "name": "torso_to_horizontal",
-    "points": ["right_shoulder", "right_hip", "horizontal_reference_point"],
+    "points": ["shoulder", "hip", "horizontal_reference_point"],
     "optimal_ranges": {
       "hood": [[40, 50]],
       "drop": [[30, 40]]
@@ -32,7 +32,7 @@
   {
     "label": "Elbow Angle (Shoulder-Elbow-Wrist)",
     "name": "elbow_angle",
-    "points": ["right_shoulder", "right_elbow", "right_wrist"],
+    "points": ["shoulder", "elbow", "wrist"],
     "optimal_ranges": {
       "hood": [[150, 170]],
       "drop": [[150, 170]]
@@ -42,7 +42,7 @@
   {
     "label": "Shoulder Angle (Hip-Shoulder-Elbow)",
     "name": "shoulder_angle",
-    "points": ["right_hip", "right_shoulder", "right_elbow"],
+    "points": ["hip", "shoulder", "elbow"],
     "optimal_ranges": {
       "hood": [[85, 90]],
       "drop": [[85, 90]]
@@ -52,7 +52,7 @@
   {
     "label": "Hip Angle (Shoulder-Hip-Knee)",
     "name": "hip_angle",
-    "points": ["right_shoulder", "right_hip", "right_knee"],
+    "points": ["shoulder", "hip", "knee"],
     "optimal_ranges": {
       "aero": [[40, 50]]
     },

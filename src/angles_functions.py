@@ -97,7 +97,7 @@ def print_angle_stats(angles: list[float], angle_name: str):
     return angle_stats
 
 
-def calc_angles(all_frames_landmarks: AllLandmarks, mode: str, angle_specs) -> dict[str, list[float]]:
+def calc_angles(all_frames_landmarks: AllLandmarks, mode: str, angle_specs, body_side) -> dict[str, list[float]]:
     dynamic_angles = defaultdict(list)
 
     for frame_lm in all_frames_landmarks.frames_landmarks:
@@ -112,8 +112,14 @@ def calc_angles(all_frames_landmarks: AllLandmarks, mode: str, angle_specs) -> d
                 continue
             if p3 == "horizontal_reference_point":
                 if hasattr(frame_lm, p2) and getattr(frame_lm, p2) is not None:
-                    p3 = Point(
-                        getattr(frame_lm, p2).x + 100, getattr(frame_lm, p2).y)
+                    if body_side == "right":
+                        p3 = Point(
+                            getattr(frame_lm, p2).x + 100, getattr(frame_lm, p2).y)
+                    elif body_side == "left":
+                        p3 = Point(
+                            getattr(frame_lm, p2).x - 100, getattr(frame_lm, p2).y)
+                    else:
+                        raise ValueError(f"Unknown body side: {body_side}")
                     if all(hasattr(frame_lm, p) and getattr(frame_lm, p) for p in (p1, p2)):
                         angle = calculate_angle(
                             getattr(frame_lm, p1),
@@ -211,3 +217,15 @@ def angles_summary(dynamic_angles: dict[str, list[float]], avg_knee_angle_peaks_
     summary_lines.append("-----------------------------\n")
 
     return summary_lines
+
+
+def calc_peaks_means(max_knee_angles, min_knee_angles):
+    """
+    Calculate the average of the max and min knee angles.
+    Returns NaN if no peaks are found.
+    """
+    avg_knee_angle_peaks_high = np.mean(
+        max_knee_angles) if max_knee_angles.size > 0 else float('nan')
+    avg_knee_angle_peaks_low = np.mean(
+        min_knee_angles) if min_knee_angles.size > 0 else float('nan')
+    return avg_knee_angle_peaks_high, avg_knee_angle_peaks_low

@@ -1,3 +1,4 @@
+import os
 from mediapipe.framework.formats import landmark_pb2
 from mediapipe import solutions
 import numpy as np
@@ -5,92 +6,92 @@ from mediapipe.tasks.python.vision import PoseLandmarker, PoseLandmarkerOptions,
 from mediapipe.tasks import python as mp_tasks
 import cv2
 import mediapipe as mp
-from src.mediapipe import extract_landmarks_mediapipe, extract_landmarks_mediapipe_from_result
+from src.mediapipe import extract_landmarks_mediapipe_from_result
 from src.models import AllLandmarks
 
 
-def process_video(video_path: str, video_length: int, video_duration: int, video_fps: int, video_width: int, video_height: int, output_path: str = None):
+# def process_video(video_path: str, video_length: int, video_duration: int, video_fps: int, video_width: int, video_height: int, output_path: str = None):
 
-    all_frames_landmarks = AllLandmarks()
-    all_frames_landmarks.clear()
+#     all_frames_landmarks = AllLandmarks()
+#     all_frames_landmarks.clear()
 
-    mp_drawing = mp.solutions.drawing_utils
-    mp_pose = mp.solutions.pose
+#     mp_drawing = mp.solutions.drawing_utils
+#     mp_pose = mp.solutions.pose
 
-    # Prepare video writer if output_path is provided
-    out = None
-    if output_path:
-        # fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        fourcc = cv2.VideoWriter_fourcc(*'avc1')
+#     # Prepare video writer if output_path is provided
+#     out = None
+#     if output_path:
+#         # fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+#         fourcc = cv2.VideoWriter_fourcc(*'avc1')
 
-        out = cv2.VideoWriter(output_path, fourcc,
-                              video_fps, (video_width, video_height))
+#         out = cv2.VideoWriter(output_path, fourcc,
+#                               video_fps, (video_width, video_height))
 
-    with mp_pose.Pose(min_detection_confidence=0.75, min_tracking_confidence=0.75, model_complexity=2) as pose:
+#     with mp_pose.Pose(min_detection_confidence=0.75, min_tracking_confidence=0.75, model_complexity=2) as pose:
 
-        cap = cv2.VideoCapture(video_path)
-        if not cap.isOpened():
-            raise TypeError(
-                f"Error opening video stream or file for MediaPipe: {video_path}")
+#         cap = cv2.VideoCapture(video_path)
+#         if not cap.isOpened():
+#             raise TypeError(
+#                 f"Error opening video stream or file for MediaPipe: {video_path}")
 
-        i = 0
-        first_image_mp = None
-        first_frame_landmarks_mp = None
+#         i = 0
+#         first_image_mp = None
+#         first_frame_landmarks_mp = None
 
-        j = 0
+#         j = 0
 
-        if video_duration <= 0 or video_duration is None:
-            video_duration = video_length
+#         if video_duration <= 0 or video_duration is None:
+#             video_duration = video_length
 
-        print("Processing video with MediaPipe...")
-        while cap.isOpened():
-            ret, image = cap.read()
-            if not ret:
-                break
-            i += 1
-            CURR_PERCENTAGE = i/video_length*100
-            if i % 100 == 0:
-                print(
-                    f"Processing frame {i}/{video_length}: ({CURR_PERCENTAGE:.2f}%)")
-            # Cut off the last 2 seconds of the video (if too long or irrelevant motion)
-            if i > video_length - 2*video_fps and video_length > 2*video_fps:
-                break
-            if j > (video_fps * video_duration):
-                break
-            j += 1  # counter for actually processed frames
+#         print("Processing video with MediaPipe...")
+#         while cap.isOpened():
+#             ret, image = cap.read()
+#             if not ret:
+#                 break
+#             i += 1
+#             CURR_PERCENTAGE = i/video_length*100
+#             if i % 100 == 0:
+#                 print(
+#                     f"Processing frame {i}/{video_length}: ({CURR_PERCENTAGE:.2f}%)")
+#             # Cut off the last 2 seconds of the video (if too long or irrelevant motion)
+#             if i > video_length - 2*video_fps and video_length > 2*video_fps:
+#                 break
+#             if j > (video_fps * video_duration):
+#                 break
+#             j += 1  # counter for actually processed frames
 
-            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            image_rgb.flags.writeable = False
+#             image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+#             image_rgb.flags.writeable = False
 
-            results = pose.process(image_rgb)
+#             results = pose.process(image_rgb)
 
-            # Extract and store landmarks
-            frame_lm = extract_landmarks_mediapipe(
-                results, video_width, video_height)
-            if frame_lm:
-                all_frames_landmarks.append_frame(frame_lm)
-                if first_image_mp is None:
-                    # Store the first image with landmarks drawn for visualization
-                    image_rgb.flags.writeable = True
-                    mp_drawing.draw_landmarks(
-                        image_rgb, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
-                    first_image_mp = image_rgb
-                    first_frame_landmarks_mp = frame_lm
+#             # Extract and store landmarks
+#             frame_lm = extract_landmarks_mediapipe(
+#                 results, video_width, video_height)
+#             if frame_lm:
+#                 all_frames_landmarks.append_frame(frame_lm)
+#                 if first_image_mp is None:
+#                     # Store the first image with landmarks drawn for visualization
+#                     image_rgb.flags.writeable = True
+#                     mp_drawing.draw_landmarks(
+#                         image_rgb, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+#                     first_image_mp = image_rgb
+#                     first_frame_landmarks_mp = frame_lm
 
-            # Draw landmarks on the frame and write to output video if needed
-            if output_path:
-                image_bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
-                if results.pose_landmarks:
-                    mp_drawing.draw_landmarks(
-                        image_bgr, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
-                out.write(image_bgr)
+#             # Draw landmarks on the frame and write to output video if needed
+#             if output_path:
+#                 image_bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
+#                 if results.pose_landmarks:
+#                     mp_drawing.draw_landmarks(
+#                         image_bgr, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+#                 out.write(image_bgr)
 
-        cap.release()
-        if out:
-            out.release()
-        print("MediaPipe processing finished.")
-        print(f"Processed {j} frames")
-        return all_frames_landmarks, first_image_mp, first_frame_landmarks_mp
+#         cap.release()
+#         if out:
+#             out.release()
+#         print("MediaPipe processing finished.")
+#         print(f"Processed {j} frames")
+#         return all_frames_landmarks, first_image_mp, first_frame_landmarks_mp
 
 # from mediapipe.tasks.python.vision.core.image import Image
 
@@ -332,3 +333,76 @@ def process_single_frame(frame, timestamp_ms, landmarker, image_width, image_hei
     # landmarker.close()
 
     return all_frames_landmarks, annotated_image
+
+
+def get_video_stats(video_path):
+    """
+    Retrieves video statistics such as length, FPS, width, and height.
+    """
+    if not os.path.exists(video_path):
+        raise TypeError("Video not found.")
+
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        raise TypeError("Could not open video file.")
+
+    video_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    video_fps = int(cap.get(cv2.CAP_PROP_FPS))
+    video_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    video_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    cap.release()  # Release the cap after getting info
+
+    return video_length, video_fps, video_width, video_height
+
+
+def process_video_from_file(video_path: str, landmarker, output_dir: str, process_duration: int, fitting_mode: str = "hood"):
+
+    all_frames_landmarks = AllLandmarks()
+    all_frames_landmarks.clear()
+
+    video_length, video_fps, video_width, video_height = get_video_stats(
+        video_path)
+
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        raise TypeError(f"Error opening video stream or file: {video_path}")
+
+    i = 0
+    j = 0
+    fourcc = cv2.VideoWriter_fourcc(*'avc1')
+    output_path = os.path.join(
+        output_dir, f"{fitting_mode}_mediapipe_output.mp4")
+    out = cv2.VideoWriter(output_path, fourcc,
+                          video_fps, (video_width, video_height))
+
+    if process_duration is None:
+        process_duration = video_length
+
+    all_video_frames = []
+
+    print("Processing video with PoseLandmarker (VIDEO mode)...")
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+        i += 1
+        CURR_PERCENTAGE = i / video_length * 100
+        if i % 100 == 0:
+            print(
+                f"Processing frame {i}/{video_length}: ({CURR_PERCENTAGE:.2f}%)")
+
+        if i > video_length - 2 * video_fps and video_length > 2 * video_fps:
+            break
+        if j > (video_fps * process_duration):
+            break
+        j += 1
+
+        timestamp_ms = int((i / video_fps) * 1000)
+        all_frames_landmarks, _ = process_single_frame(
+            frame, timestamp_ms, landmarker, video_width, video_height, all_frames_landmarks, out_writer=out)
+        all_video_frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+    cap.release()
+
+    print("Processing finished.")
+    print(f"Processed {j} frames")
+    return all_frames_landmarks, all_video_frames, video_fps, video_length

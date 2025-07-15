@@ -137,7 +137,7 @@ def get_bike_fit_recommendations(angles_data: dict[str, list[float]],
     # 6. KOPS Analysis
     if kops_value is not None:
         recommendations.append(
-            f"KOPS horizontal distance (at max right foot X): {kops_value:.2f} pixels")
+            f"KOPS horizontal distance (at max foot X): {kops_value:.2f} pixels")
         if kops_value < 0:
             recommendations.append(
                 "• Negative value: Knee is in front of estimated pedal spindle (foot index).")
